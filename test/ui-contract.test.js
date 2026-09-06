@@ -18,7 +18,7 @@ test('core UI uses the three live backend actions', () => {
   const actions = read('src/app/actions.tsx');
   assert.match(api, /runAction\('knowledge'/);
   assert.match(api, /runAction\('search'/);
-  assert.match(actions, /action\/calculation/);
+  assert.match(actions, /tools\/calculation/);
   assert.match(actions, /Тун удахгүй/);
 });
 

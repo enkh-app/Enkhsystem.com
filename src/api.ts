@@ -45,6 +45,50 @@ export type ActionResponse = {
   };
 };
 
+export type DashboardBreakdown = { label: string; count: number };
+export type AdminDashboardData = {
+  overview: { knowledgeVectors: number; chatMessages: number; distinctSessions: number; sources: number; systemHealth: string };
+  knowledge: {
+    collections: DashboardBreakdown[];
+    sources: DashboardBreakdown[];
+    categories: DashboardBreakdown[];
+    languages: DashboardBreakdown[];
+    latest: { title: string; source: string; category: string; language: string; ingestedAt: string }[];
+  };
+  toolUsage: Record<'knowledge_base' | 'google_search' | 'wikipedia_search' | 'deepseek_china', number>;
+  memory: { totalMessages: number; distinctSessions: number };
+  health: { status: string; readOnly: boolean; generatedAt: string };
+};
+
+export class AdminApiError extends Error {
+  constructor(public status: number) { super(`Admin API error: ${status}`); }
+}
+
+export class ActionApiError extends Error {
+  constructor(public status: number) { super(`Action API error: ${status}`); }
+}
+
+export async function getSystemHealth(): Promise<{ healthy: boolean }> {
+  const response = await fetch(`${ENKH_API_URL}/health`, { method: 'GET', headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new Error(`Health API error: ${response.status}`);
+  const payload = await response.json();
+  return { healthy: payload?.status === 'healthy' || payload?.success === true };
+}
+
+export async function getAdminDashboard(): Promise<AdminDashboardData> {
+  const response = await fetch(`${ENKH_API_URL}/api/admin/data`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) throw new AdminApiError(response.status);
+  const payload = await response.json();
+  if (!payload?.success || !payload.data) throw new AdminApiError(502);
+  return payload.data;
+}
+
+export const adminLoginUrl = `${ENKH_API_URL}/auth/login?returnTo=${encodeURIComponent('/auth/complete')}`;
+
 async function requestKnowledge(input: string): Promise<ActionResponse> {
   return runAction('knowledge', input);
 }
@@ -74,7 +118,7 @@ export async function runAction(
   });
 
   if (!response.ok) {
-    throw new Error(`Action API error: ${response.status}`);
+    throw new ActionApiError(response.status);
   }
 
   return response.json();

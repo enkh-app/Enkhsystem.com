@@ -20,8 +20,8 @@ export default function WorkspaceScreen() {
 
   const open = (session: WorkspaceSession) => {
     if (session.type === 'chat') router.push({ pathname: '/chat', params: { sessionId: session.id } });
-    else if (session.type === 'search') router.push({ pathname: '/knowledge-search', params: { sessionId: session.id } });
-    else router.push({ pathname: '/action/[id]', params: { id: 'calculation', sessionId: session.id } });
+    else if (session.type === 'search') router.push({ pathname: '/search', params: { sessionId: session.id } });
+    else router.push({ pathname: '/tools/calculation', params: { sessionId: session.id } });
   };
 
   const remove = (session: WorkspaceSession) => { const next = deleteSession(state, session.id); if (saveWorkspace(next)) { setState(next); setConfirming(''); } };

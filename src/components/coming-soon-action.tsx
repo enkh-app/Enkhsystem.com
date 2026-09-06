@@ -7,13 +7,13 @@ import { AppHeader } from './app-header';
 export function ComingSoonAction({ title }: { title: string }) {
   return (
     <SafeAreaView style={styles.page}>
-      <AppHeader active="actions" />
+      <AppHeader active="tools" />
       <View style={styles.content}>
         <Text style={styles.badge}>ТУН УДАХГҮЙ</Text>
         <Text accessibilityRole="header" style={styles.title}>{title}</Text>
         <Text style={styles.description}>Энэ боломж prototype төлөвт байна. Production үйлдэл бэлэн болмогц эндээс ажиллана.</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.replace('/actions')} style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
-          <Text style={styles.buttonText}>Actions руу буцах</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.replace('/tools')} style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
+          <Text style={styles.buttonText}>Tools руу буцах</Text>
         </Pressable>
       </View>
     </SafeAreaView>

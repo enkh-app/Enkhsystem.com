@@ -5,9 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/app-header';
 
 const available = [
-  { title: 'Тооцоолол', description: 'Тоон илэрхийлэл, хувь болон хэмжих нэгжтэй тооцоо.', route: '/action/calculation', label: 'Ажиллуулах' },
+  { title: 'Тооцоолол', description: 'Тоон илэрхийлэл, хувь болон хэмжих нэгжтэй тооцоо.', route: '/tools/calculation', label: 'Ажиллуулах' },
   { title: 'AI мэдлэг', description: 'Монгол асуултад ENKH AI-аас шууд хариулт авах.', route: '/chat', label: 'Асуух' },
-  { title: 'Вэб хайлт', description: 'Бодит вэб хайлт, нэгтгэсэн хариу, эх сурвалж.', route: '/knowledge-search', label: 'Хайх' },
+  { title: 'Вэб хайлт', description: 'Бодит вэб хайлт, нэгтгэсэн хариу, эх сурвалж.', route: '/search', label: 'Хайх' },
 ] as const;
 
 const upcoming = ['Мессеж бэлтгэх', 'Сануулагч', 'Баримт бичиг', 'Текст боловсруулах'];
@@ -15,10 +15,10 @@ const upcoming = ['Мессеж бэлтгэх', 'Сануулагч', 'Бари
 export default function ActionsScreen() {
   return (
     <SafeAreaView style={styles.page}>
-      <AppHeader active="actions" />
+      <AppHeader active="tools" />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>ENKH Actions</Text>
-        <Text style={styles.subtitle}>Одоо ажиллаж байгаа production үйлдлүүд.</Text>
+        <Text accessibilityRole="header" style={styles.title}>ENKH Tools</Text>
+        <Text style={styles.subtitle}>Бодитоор ажиллаж байгаа хэрэгслүүд ба compatibility action-ууд.</Text>
 
         <View style={styles.list}>
           {available.map((action) => (

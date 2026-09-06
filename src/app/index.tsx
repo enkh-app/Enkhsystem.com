@@ -1,22 +1,26 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../components/app-header';
+import { loadWorkspace, WorkspaceSession } from '../workspace-store';
 
 type Mode = 'chat' | 'search';
 
 export default function HomeScreen() {
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<Mode>('chat');
+  const [recent, setRecent] = useState<WorkspaceSession[]>([]);
+
+  useEffect(() => { setRecent(loadWorkspace().state.sessions.slice(0, 3)); }, []);
 
   const submit = () => {
     const value = input.trim();
     if (!value) return;
 
     router.push({
-      pathname: mode === 'chat' ? '/chat' : '/knowledge-search',
+      pathname: mode === 'chat' ? '/chat' : '/search',
       params: mode === 'chat' ? { prompt: value } : { q: value },
     });
   };
@@ -58,8 +62,16 @@ export default function HomeScreen() {
 
         <View style={styles.cards}>
           <Capability title="Chat" description="ENKH AI-аас Монгол хэлээр шууд хариулт авна." action="Ярилцах" onPress={() => router.push('/chat')} />
-          <Capability title="Search" description="Вэб хайлт хийж, эх сурвалжтай хариулт авна." action="Хайх" onPress={() => router.push('/knowledge-search')} />
-          <Capability title="Actions" description="Тооцоолол болон бэлэн үйлдлүүдийг ажиллуулна." action="Нээх" onPress={() => router.push('/actions')} />
+          <Capability title="Search" description="Шинэ, гадаад мэдээллийг вэбээс хайж, эх сурвалжтай хариулт авна." action="Хайх" onPress={() => router.push('/search')} />
+          <Capability title="Tools" description="Тооцоолол болон бодитоор ажиллаж байгаа хэрэгслүүд." action="Нээх" onPress={() => router.push('/tools')} />
+        </View>
+
+        <View style={styles.controlRow}>
+          <View style={styles.recentPanel}>
+            <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Recent Workspace</Text><Pressable accessibilityRole="link" onPress={() => router.push('/workspace')}><Text style={styles.sectionLink}>Бүгдийг харах →</Text></Pressable></View>
+            {recent.length ? recent.map((session) => <Pressable key={session.id} accessibilityRole="link" onPress={() => router.push({ pathname: '/workspace' })} style={styles.recentItem}><Text style={styles.recentKind}>{session.type.toUpperCase()}</Text><Text numberOfLines={1} style={styles.recentTitle}>{session.title}</Text></Pressable>) : <Text style={styles.emptyText}>Chat, Search эсвэл Calculation ашиглахад local history энд харагдана.</Text>}
+          </View>
+          <View style={styles.systemPanel}><Text style={styles.sectionTitle}>Account / System</Text><Text style={styles.systemState}>Local-only workspace</Text><Text style={styles.emptyText}>Cloud sync одоогоор идэвхгүй. Таны history энэ browser дээр хадгалагдана.</Text><Pressable accessibilityRole="link" onPress={() => router.push('/status')}><Text style={styles.sectionLink}>System status →</Text></Pressable></View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -107,4 +119,9 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 21, fontWeight: '800', color: '#171717' },
   cardDescription: { flex: 1, marginTop: 12, fontSize: 15, lineHeight: 23, color: '#686868' },
   cardAction: { marginTop: 24, fontSize: 14, fontWeight: '800', color: '#171717' },
+  controlRow: { marginTop: 18, flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  recentPanel: { flexGrow: 2, flexBasis: 420, padding: 22, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E4E1' },
+  systemPanel: { flexGrow: 1, flexBasis: 260, padding: 22, borderRadius: 20, backgroundColor: '#EEEDEA' },
+  sectionHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, sectionTitle: { fontSize: 17, fontWeight: '900', color: '#171717' }, sectionLink: { minHeight: 44, textAlignVertical: 'center', fontSize: 13, fontWeight: '800', color: '#343434' },
+  recentItem: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: '#ECECE8' }, recentKind: { width: 58, fontSize: 9, letterSpacing: 1, fontWeight: '900', color: '#777' }, recentTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: '#303030' }, emptyText: { marginTop: 10, fontSize: 13, lineHeight: 20, color: '#707070' }, systemState: { alignSelf: 'flex-start', marginTop: 14, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9, overflow: 'hidden', backgroundColor: '#FFF4D8', fontSize: 11, fontWeight: '900', color: '#725413' },
 });

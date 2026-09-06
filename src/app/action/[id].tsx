@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 
 import {
@@ -19,15 +19,16 @@ import {
 } from '../../action-engine';
 import { runAction } from '../../api';
 import { addEntry, createSession, entriesFor, loadWorkspace, saveWorkspace } from '../../workspace-store';
+import { ComingSoonAction } from '../../components/coming-soon-action';
 
 export function generateStaticParams() {
   return ACTIONS.map((action) => ({ id: action.id }));
 }
 
-export default function ActionScreen() {
+export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId } = {}) {
   const { id, sessionId: requestedSessionId } = useLocalSearchParams<{ id?: string; sessionId?: string }>();
 
-  const actionId = (id || 'custom') as ActionId;
+  const actionId = (fixedActionId || id || 'custom') as ActionId;
 
   const action = ACTIONS.find(
     (item) => item.id === actionId
@@ -156,6 +157,9 @@ export default function ActionScreen() {
       </SafeAreaView>
     );
   }
+
+  if (actionId === 'search') return <Redirect href="/search" />;
+  if (actionId !== 'calculation') return <ComingSoonAction title={action.title} />;
 
   const calculation = executionData?.result;
 
@@ -525,6 +529,10 @@ export default function ActionScreen() {
       </View>
     </SafeAreaView>
   );
+}
+
+export default function ActionScreen() {
+  return <ActionExperience />;
 }
 
 const styles = StyleSheet.create({
