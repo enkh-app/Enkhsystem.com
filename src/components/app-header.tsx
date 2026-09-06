@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type AppHeaderProps = {
-  active?: 'home' | 'chat' | 'search' | 'actions';
+  active?: 'home' | 'chat' | 'search' | 'actions' | 'workspace';
 };
 
 const items = [
@@ -10,6 +10,7 @@ const items = [
   { id: 'chat', label: 'Chat', href: '/chat' },
   { id: 'search', label: 'Хайлт', href: '/knowledge-search' },
   { id: 'actions', label: 'Actions', href: '/actions' },
+  { id: 'workspace', label: 'History', href: '/workspace' },
 ] as const;
 
 export function AppHeader({ active }: AppHeaderProps) {
@@ -35,7 +36,7 @@ export function AppHeader({ active }: AppHeaderProps) {
               accessibilityRole="link"
               accessibilityLabel={item.label}
               accessibilityState={{ selected }}
-              onPress={() => router.push(item.href)}
+              onPress={() => router.push(item.href as never)}
               style={({ pressed }) => [
                 styles.navItem,
                 selected && styles.navItemActive,

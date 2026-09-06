@@ -53,7 +53,7 @@ export async function sendMessage(
   message: string,
   _history: ChatMessage[] = []
 ) {
-  const data = await requestKnowledge(message);
+  const data = await runAction('knowledge', history.length ? { message, history } : message);
   const answer = data.data?.result?.answer?.trim();
 
   return { ...data, answer, message: answer || data.message };
@@ -65,7 +65,7 @@ export async function searchWeb(query: string): Promise<ActionResponse> {
 
 export async function runAction(
   actionId: string,
-  input: string
+  input: unknown
 ): Promise<ActionResponse> {
   const response = await fetch(`${ENKH_API_URL}/actions/run`, {
     method: 'POST',

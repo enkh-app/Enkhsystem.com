@@ -34,3 +34,9 @@ test('updated core screens contain no common UTF-8 mojibake markers', () => {
   const combined = files.map(read).join('\n');
   assert.doesNotMatch(combined, /Ð|Ñ|Â|â€|ðŸ|â†|âš/);
 });
+
+test('workspace persistence never stores frontend secrets', () => {
+  const storage = read('src/workspace-store.ts');
+  assert.doesNotMatch(storage, /OPENAI_API_KEY|CLOUDFLARE.*TOKEN|sk-[A-Za-z0-9_-]{20,}/);
+  assert.match(storage, /WORKSPACE_SCHEMA_VERSION/);
+});

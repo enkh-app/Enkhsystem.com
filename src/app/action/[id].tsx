@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 
 import {
   ACTIONS,
@@ -17,13 +18,14 @@ import {
   ActionId,
 } from '../../action-engine';
 import { runAction } from '../../api';
+import { addEntry, createSession, entriesFor, loadWorkspace, saveWorkspace } from '../../workspace-store';
 
 export function generateStaticParams() {
   return ACTIONS.map((action) => ({ id: action.id }));
 }
 
 export default function ActionScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, sessionId: requestedSessionId } = useLocalSearchParams<{ id?: string; sessionId?: string }>();
 
   const actionId = (id || 'custom') as ActionId;
 
@@ -37,6 +39,18 @@ export default function ActionScreen() {
   const [success, setSuccess] = useState<boolean | null>(null);
   const [executionData, setExecutionData] =
     useState<ActionExecutionData | null>(null);
+
+  useEffect(() => {
+    if (!requestedSessionId) return;
+    const restoredEntry = [...entriesFor(loadWorkspace().state, requestedSessionId)].reverse().find((entry) => entry.type === 'action');
+    const restoredData = restoredEntry?.structuredResult as ActionExecutionData | undefined;
+    if (restoredData) {
+      setInput(restoredData.input);
+      setResult(restoredEntry?.content || '');
+      setSuccess(true);
+      setExecutionData(restoredData);
+    }
+  }, [requestedSessionId]);
 
   const handleRun = async () => {
     const text = input.trim();
@@ -76,6 +90,26 @@ export default function ActionScreen() {
           setExecutionData(
             data as ActionExecutionData
           );
+
+          if (actionId === 'calculation') {
+            let next = loadWorkspace().state;
+            let activeSessionId = requestedSessionId;
+            if (!activeSessionId) {
+              const created = createSession(next, 'action', text);
+              next = created.state;
+              activeSessionId = created.session.id;
+              router.setParams({ sessionId: activeSessionId });
+            }
+            next = addEntry(next, {
+              sessionId: activeSessionId,
+              role: 'assistant',
+              type: 'action',
+              content: response.message,
+              actionId,
+              structuredResult: data,
+            });
+            saveWorkspace(next);
+          }
         }
       }
     } catch {
