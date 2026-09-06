@@ -53,7 +53,7 @@ export async function sendMessage(
   message: string,
   _history: ChatMessage[] = []
 ) {
-  const data = await runAction('knowledge', history.length ? { message, history } : message);
+  const data = await runAction('knowledge', _history.length ? { message, history: _history } : message);
   const answer = data.data?.result?.answer?.trim();
 
   return { ...data, answer, message: answer || data.message };
