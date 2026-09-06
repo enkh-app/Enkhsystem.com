@@ -1,210 +1,90 @@
-﻿import { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 
-import { sendMessage, ChatMessage } from '../api';
+import { sendMessage } from '../api';
+import { AppHeader } from '../components/app-header';
 
-type Message = {
-  id: number;
-  text: string;
-  from: 'user' | 'enkh';
-};
+type Message = { id: number; text: string; from: 'user' | 'enkh' };
 
 export default function ChatScreen() {
-  const [input, setInput] = useState('');
+  const { prompt } = useLocalSearchParams<{ prompt?: string }>();
+  const initialPrompt = typeof prompt === 'string' ? prompt : '';
+  const [input, setInput] = useState(initialPrompt);
   const [loading, setLoading] = useState(false);
-
-  const scrollViewRef = useRef<ScrollView>(null);
-
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: 'Ð¡Ð°Ð¹Ð½ Ð±Ð°Ð¹Ð½Ð° ÑƒÑƒ, Nasa. Ð‘Ð¸ Ð­Ð½Ñ… Ð±Ð°Ð¹Ð½Ð°. Ð®ÑƒÐ³Ð°Ð°Ñ€ Ñ‚ÑƒÑÐ»Ð°Ñ… Ð²Ñ?',
-      from: 'enkh',
-    },
+    { id: 1, text: 'Сайн байна уу. Би ENKH AI. Танд юугаар туслах вэ?', from: 'enkh' },
   ]);
+  const scrollRef = useRef<ScrollView>(null);
+  const initialSent = useRef(false);
 
-  useEffect(() => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 50);
-  }, [messages]);
-
-  const sendChatMessage = async () => {
-    const text = input.trim();
-
+  const send = async (value = input) => {
+    const text = value.trim();
     if (!text || loading) return;
 
-    const userMessage: Message = {
-      id: Date.now(),
-      text,
-      from: 'user',
-    };
-
-    setMessages((current) => [...current, userMessage]);
+    setMessages((current) => [...current, { id: Date.now(), text, from: 'user' }]);
     setInput('');
     setLoading(true);
 
     try {
-      const history: ChatMessage[] = messages.map((message) => ({
-        role: message.from === 'user' ? 'user' : 'assistant',
-        content: message.text,
-      }));
-
-      const data = await sendMessage(text, history);
-
-      const assistantText =
-        data?.message ??
-        data?.response ??
-        data?.answer ??
-        data?.content ??
-        'Ð­Ð½Ñ…ÑÑÑ Ñ…Ð°Ñ€Ð¸Ñƒ Ð¸Ñ€ÑÑÐ½ Ð±Ð¾Ð»Ð¾Ð²Ñ‡ Ñ…Ð°Ñ€Ð¸ÑƒÐ½Ñ‹ Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚ Ñ‚Ð¾Ð´Ð¾Ñ€Ñ…Ð¾Ð¹Ð³Ò¯Ð¹ Ð±Ð°Ð¹Ð½Ð°.';
-
-      setMessages((current) => [
-        ...current,
-        {
-          id: Date.now() + 1,
-          text: assistantText,
-          from: 'enkh',
-        },
-      ]);
-    } catch (error) {
-      setMessages((current) => [
-        ...current,
-        {
-          id: Date.now() + 1,
-          text: 'ENKH API Ð¾Ð´Ð¾Ð¾Ð³Ð¾Ð¾Ñ€ Ñ…Ð¾Ð»Ð±Ð¾Ð³Ð´Ð¾Ñ… Ð±Ð¾Ð»Ð¾Ð¼Ð¶Ð³Ò¯Ð¹ Ð±Ð°Ð¹Ð½Ð°. API ÑÐµÑ€Ð²ÐµÑ€ÑÑ Ð°Ð¶Ð¸Ð»Ð»ÑƒÑƒÐ»ÑÐ½Ñ‹ Ð´Ð°Ñ€Ð°Ð° ÑÐ½Ð´ÑÑÑ ÑˆÑƒÑƒÐ´ Ñ…Ð°Ñ€Ð¸Ñƒ Ð°Ð²Ð½Ð°.',
-          from: 'enkh',
-        },
-      ]);
+      const response = await sendMessage(text);
+      const answer = response.answer || response.message || response.response || response.content;
+      if (!answer?.trim()) throw new Error('Empty AI answer');
+      setMessages((current) => [...current, { id: Date.now() + 1, text: answer.trim(), from: 'enkh' }]);
+    } catch {
+      setMessages((current) => [...current, { id: Date.now() + 1, text: 'ENKH API-тай холбогдоход алдаа гарлаа. Түр хүлээгээд дахин оролдоно уу.', from: 'enkh' }]);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (initialPrompt && !initialSent.current) {
+      initialSent.current = true;
+      void send(initialPrompt);
+    }
+  }, [initialPrompt]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+    return () => clearTimeout(timer);
+  }, [messages, loading]);
+
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboard}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Text style={styles.backText}>â€¹</Text>
-          </Pressable>
-
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>ENKH</Text>
-            <Text style={styles.headerStatus}>
-              AI ASSISTANT
-            </Text>
-          </View>
-
-          <View style={styles.headerPlaceholder} />
+    <SafeAreaView style={styles.page}>
+      <AppHeader active="chat" />
+      <KeyboardAvoidingView style={styles.layout} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.intro}>
+          <Text accessibilityRole="header" style={styles.title}>ENKH Chat</Text>
+          <Text style={styles.subtitle}>Асуултаа Монгол хэлээр бичиж, AI-аас шууд хариулт аваарай.</Text>
         </View>
-
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.messages}
-          contentContainerStyle={styles.messagesContent}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView ref={scrollRef} style={styles.messages} contentContainerStyle={styles.messageContent} keyboardShouldPersistTaps="handled">
           {messages.map((message) => (
-            <View
-              key={message.id}
-              style={[
-                styles.messageRow,
-                message.from === 'user'
-                  ? styles.userRow
-                  : styles.enkhRow,
-              ]}
-            >
-              {message.from === 'enkh' && (
-                <View style={styles.smallAvatar}>
-                  <Text style={styles.smallAvatarText}>E</Text>
-                </View>
-              )}
-
-              <View
-                style={[
-                  styles.bubble,
-                  message.from === 'user'
-                    ? styles.userBubble
-                    : styles.enkhBubble,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.messageText,
-                    message.from === 'user'
-                      ? styles.userMessageText
-                      : styles.enkhMessageText,
-                  ]}
-                >
-                  {message.text}
-                </Text>
+            <View key={message.id} style={[styles.row, message.from === 'user' ? styles.userRow : styles.enkhRow]}>
+              <View style={[styles.bubble, message.from === 'user' ? styles.userBubble : styles.enkhBubble]}>
+                <Text style={[styles.message, message.from === 'user' && styles.userMessage]}>{message.text}</Text>
               </View>
             </View>
           ))}
-
-          {loading && (
-            <View style={styles.loadingRow}>
-              <View style={styles.smallAvatar}>
-                <Text style={styles.smallAvatarText}>E</Text>
-              </View>
-
-              <View style={styles.loadingBubble}>
-                <ActivityIndicator />
-                <Text style={styles.loadingText}>
-                  Ð­Ð½Ñ… Ð±Ð¾Ð´Ð¾Ð¶ Ð±Ð°Ð¹Ð½Ð°...
-                </Text>
-              </View>
-            </View>
-          )}
+          {loading && <View accessibilityLiveRegion="polite" style={styles.thinking}><ActivityIndicator color="#171717" /><Text style={styles.thinkingText}>ENKH бодож байна…</Text></View>}
         </ScrollView>
-
-        <View style={styles.inputArea}>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              value={input}
-              onChangeText={setInput}
-              placeholder="Ð­Ð½Ñ…ÑÑÑ ÑŽÐ¼ Ð°ÑÑƒÑƒÑ…..."
-              placeholderTextColor="#999999"
-              style={styles.input}
-              multiline
-              editable={!loading}
-            />
-
-            <Pressable style={styles.voiceButton}>
-              <Text style={styles.voiceIcon}>ðŸŽ™</Text>
-            </Pressable>
-
-            <Pressable
-              style={[
-                styles.sendButton,
-                (!input.trim() || loading) &&
-                  styles.sendButtonDisabled,
-              ]}
-              onPress={sendChatMessage}
-              disabled={!input.trim() || loading}
-            >
-              <Text style={styles.sendIcon}>â†‘</Text>
-            </Pressable>
-          </View>
+        <View style={styles.composer}>
+          <TextInput
+            accessibilityLabel="Chat асуулт"
+            editable={!loading}
+            multiline
+            value={input}
+            onChangeText={setInput}
+            onSubmitEditing={() => void send()}
+            placeholder="ENKH-ээс юм асуух…"
+            placeholderTextColor="#888"
+            style={styles.input}
+            submitBehavior="submit"
+          />
+          <Pressable accessibilityRole="button" accessibilityLabel="Асуулт илгээх" disabled={!input.trim() || loading} onPress={() => void send()} style={({ pressed }) => [styles.send, (!input.trim() || loading) && styles.disabled, pressed && styles.pressed]}>
+            <Text style={styles.sendText}>Илгээх ↑</Text>
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -212,218 +92,27 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F7F5',
-  },
-
-  keyboard: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 1100,
-    alignSelf: 'center',
-  },
-
-  header: {
-    height: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E8E8',
-  },
-
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  backText: {
-    fontSize: 34,
-    lineHeight: 36,
-    color: '#111111',
-  },
-
-  headerCenter: {
-    alignItems: 'center',
-  },
-
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: 4,
-    color: '#111111',
-  },
-
-  headerStatus: {
-    marginTop: 3,
-    fontSize: 8,
-    letterSpacing: 2,
-    color: '#999999',
-  },
-
-  headerPlaceholder: {
-    width: 44,
-  },
-
-  messages: {
-    flex: 1,
-  },
-
-  messagesContent: {
-    paddingHorizontal: 24,
-    paddingVertical: 30,
-    gap: 22,
-  },
-
-  messageRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-    maxWidth: '85%',
-  },
-
-  enkhRow: {
-    alignSelf: 'flex-start',
-  },
-
-  userRow: {
-    alignSelf: 'flex-end',
-  },
-
-  smallAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#111111',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  smallAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-
-  bubble: {
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 20,
-  },
-
-  enkhBubble: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderBottomLeftRadius: 5,
-  },
-
-  userBubble: {
-    backgroundColor: '#111111',
-    borderBottomRightRadius: 5,
-  },
-
-  messageText: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-
-  enkhMessageText: {
-    color: '#222222',
-  },
-
-  userMessageText: {
-    color: '#FFFFFF',
-  },
-
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-    alignSelf: 'flex-start',
-  },
-
-  loadingBubble: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 20,
-    borderBottomLeftRadius: 5,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-
-  loadingText: {
-    fontSize: 14,
-    color: '#777777',
-  },
-
-  inputArea: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-  },
-
-  inputWrapper: {
-    minHeight: 64,
-    maxWidth: 900,
-    width: '100%',
-    alignSelf: 'center',
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 18,
-    paddingRight: 8,
-  },
-
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111111',
-    paddingVertical: 14,
-  },
-
-  voiceButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  voiceIcon: {
-    fontSize: 20,
-  },
-
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#111111',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  sendButtonDisabled: {
-    opacity: 0.25,
-  },
-
-  sendIcon: {
-    color: '#FFFFFF',
-    fontSize: 23,
-    fontWeight: '700',
-  },
+  page: { flex: 1, backgroundColor: '#F7F7F5' },
+  layout: { flex: 1, width: '100%', maxWidth: 920, alignSelf: 'center', paddingHorizontal: 20, paddingBottom: 16 },
+  intro: { paddingTop: 24, paddingBottom: 18 },
+  title: { fontSize: 30, fontWeight: '900', color: '#171717' },
+  subtitle: { marginTop: 7, fontSize: 15, lineHeight: 22, color: '#707070' },
+  messages: { flex: 1, borderRadius: 22, backgroundColor: '#F1F1EE' },
+  messageContent: { padding: 18, gap: 16 },
+  row: { maxWidth: '86%' },
+  enkhRow: { alignSelf: 'flex-start' },
+  userRow: { alignSelf: 'flex-end' },
+  bubble: { paddingHorizontal: 17, paddingVertical: 13, borderRadius: 18 },
+  enkhBubble: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E1E1DD' },
+  userBubble: { backgroundColor: '#171717' },
+  message: { fontSize: 16, lineHeight: 24, color: '#202020' },
+  userMessage: { color: '#FFF' },
+  thinking: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
+  thinkingText: { color: '#686868', fontSize: 14 },
+  composer: { marginTop: 12, minHeight: 66, flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 8, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD' },
+  input: { flex: 1, minHeight: 48, maxHeight: 140, paddingHorizontal: 12, paddingVertical: 12, color: '#171717', fontSize: 16, lineHeight: 23, textAlignVertical: 'top' },
+  send: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 17, borderRadius: 14, backgroundColor: '#171717' },
+  sendText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
+  disabled: { opacity: 0.3 },
+  pressed: { opacity: 0.7 },
 });

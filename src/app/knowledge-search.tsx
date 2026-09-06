@@ -1,481 +1,117 @@
-﻿import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 
-import { searchKnowledge, KnowledgeResult } from '../api';
+import { searchWeb, SearchSource } from '../api';
+import { AppHeader } from '../components/app-header';
 
 export default function KnowledgeSearchScreen() {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<KnowledgeResult[]>([]);
+  const { q } = useLocalSearchParams<{ q?: string }>();
+  const initialQuery = typeof q === 'string' ? q : '';
+  const [query, setQuery] = useState(initialQuery);
+  const [answer, setAnswer] = useState('');
+  const [sources, setSources] = useState<SearchSource[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const initialSearched = useRef(false);
 
-  const handleSearch = async () => {
-    const text = query.trim();
-
+  const search = async (value = query) => {
+    const text = value.trim();
     if (!text || loading) return;
-
     setLoading(true);
     setError('');
-    setResults([]);
+    setAnswer('');
+    setSources([]);
 
     try {
-      const data = await searchKnowledge(text);
-      setResults(data);
-    } catch (error) {
-      setError(
-        'Knowledge API Ð¾Ð´Ð¾Ð¾Ð³Ð¾Ð¾Ñ€ Ñ…Ð¾Ð»Ð±Ð¾Ð³Ð´Ð¾Ñ… Ð±Ð¾Ð»Ð¾Ð¼Ð¶Ð³Ò¯Ð¹ Ð±Ð°Ð¹Ð½Ð°. ÐœÑÐ´Ð»ÑÐ³Ð¸Ð¹Ð½ ÑÐµÑ€Ð²ÐµÑ€ÑÑ Ð°Ð¶Ð¸Ð»Ð»ÑƒÑƒÐ»ÑÐ½Ñ‹ Ð´Ð°Ñ€Ð°Ð° ÑÐ½Ð´ Ð±Ð¾Ð´Ð¸Ñ‚ Ò¯Ñ€ Ð´Ò¯Ð½ Ð³Ð°Ñ€Ð½Ð°.'
-      );
+      const response = await searchWeb(text);
+      const result = response.data?.result;
+      if (!result?.answer?.trim()) throw new Error('Empty search answer');
+      setAnswer(result.answer.trim());
+      setSources((result.sources || []).filter((source) => /^https?:\/\//i.test(source.url)));
+    } catch {
+      setError('Вэб хайлт хийхэд алдаа гарлаа. Түр хүлээгээд дахин оролдоно уу.');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (initialQuery && !initialSearched.current) {
+      initialSearched.current = true;
+      void search(initialQuery);
+    }
+  }, [initialQuery]);
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Text style={styles.backText}>â€¹</Text>
-          </Pressable>
-
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>KNOWLEDGE SEARCH</Text>
-            <Text style={styles.headerStatus}>ENKH AI</Text>
-          </View>
-
-          <View style={styles.headerPlaceholder} />
+    <SafeAreaView style={styles.page}>
+      <AppHeader active="search" />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.heading}>
+          <Text accessibilityRole="header" style={styles.title}>Эх сурвалжтай вэб хайлт</Text>
+          <Text style={styles.subtitle}>ENKH бодит вэб мэдээллээс хайж, нэгтгэсэн хариу болон ашигласан эх сурвалжийг харуулна.</Text>
         </View>
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.hero}>
-            <View style={styles.iconCircle}>
-              <Text style={styles.icon}>ðŸ”Ž</Text>
+        <View style={styles.searchBox}>
+          <TextInput accessibilityLabel="Вэб хайлтын асуулт" editable={!loading} value={query} onChangeText={setQuery} onSubmitEditing={() => void search()} placeholder="Юу хайх вэ?" placeholderTextColor="#888" returnKeyType="search" style={styles.input} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Вэбээс хайх" disabled={!query.trim() || loading} onPress={() => void search()} style={({ pressed }) => [styles.button, (!query.trim() || loading) && styles.disabled, pressed && styles.pressed]}>
+            <Text style={styles.buttonText}>Хайх</Text>
+          </Pressable>
+        </View>
+
+        {loading && <View accessibilityLiveRegion="polite" style={styles.state}><ActivityIndicator color="#171717" /><Text style={styles.stateText}>Вэбээс хайж байна…</Text></View>}
+        {!!error && <View accessibilityLiveRegion="assertive" style={styles.error}><Text style={styles.errorTitle}>Хайлт амжилтгүй</Text><Text style={styles.errorText}>{error}</Text></View>}
+
+        {!!answer && (
+          <View style={styles.results}>
+            <View style={styles.answerCard}>
+              <Text style={styles.label}>ENKH ХАРИУЛТ</Text>
+              <Text style={styles.answer}>{answer}</Text>
             </View>
-
-            <Text style={styles.title}>
-              ÐœÑÐ´Ð»ÑÐ³ Ñ…Ð°Ð¹Ñ…
-            </Text>
-
-            <Text style={styles.subtitle}>
-              ENKH-Ð¸Ð¹Ð½ Ð¼ÑÐ´Ð»ÑÐ³Ð¸Ð¹Ð½ ÑÐ°Ð½Ð³Ð°Ð°Ñ Ð¼ÑÐ´ÑÑÐ»ÑÐ» Ñ…Ð°Ð¹
-            </Text>
-          </View>
-
-          <View style={styles.searchWrapper}>
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Ð®Ñƒ Ñ…Ð°Ð¹Ñ… Ð²Ñ?"
-              placeholderTextColor="#999999"
-              style={styles.input}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-              editable={!loading}
-            />
-
-            <Pressable
-              style={[
-                styles.searchButton,
-                loading && styles.searchButtonDisabled,
-              ]}
-              onPress={handleSearch}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator />
-              ) : (
-                <Text style={styles.searchButtonText}>
-                  Ð¥Ð°Ð¹Ñ…
-                </Text>
-              )}
-            </Pressable>
-          </View>
-
-          {error !== '' && (
-            <View style={styles.errorCard}>
-              <Text style={styles.errorIcon}>âš ï¸</Text>
-
-              <Text style={styles.errorText}>
-                {error}
-              </Text>
-            </View>
-          )}
-
-          {loading && (
-            <View style={styles.loadingState}>
-              <ActivityIndicator />
-
-              <Text style={styles.loadingText}>
-                ÐœÑÐ´Ð»ÑÐ³Ð¸Ð¹Ð½ ÑÐ°Ð½Ð³Ð°Ð°Ñ Ñ…Ð°Ð¹Ð¶ Ð±Ð°Ð¹Ð½Ð°...
-              </Text>
-            </View>
-          )}
-
-          {!loading && !error && results.length > 0 && (
-            <View style={styles.results}>
-              <Text style={styles.resultsTitle}>
-                Ð¥Ð°Ð¹Ð»Ñ‚Ñ‹Ð½ Ò¯Ñ€ Ð´Ò¯Ð½
-              </Text>
-
-              {results.map((result) => (
-                <View
-                  key={result.id}
-                  style={styles.resultCard}
-                >
-                  <View style={styles.resultTop}>
-                    <Text style={styles.resultIcon}>
-                      ðŸ“„
-                    </Text>
-
-                    <View style={styles.resultCategory}>
-                      <Text style={styles.categoryText}>
-                        {result.category}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.resultTitle}>
-                    {result.title}
-                  </Text>
-
-                  <Text style={styles.resultDescription}>
-                    {result.description}
-                  </Text>
-
-                  <Pressable
-                    style={styles.openButton}
-                    onPress={() => {}}
-                  >
-                    <Text style={styles.openButtonText}>
-                      ÐÑÑÑ… â†’
-                    </Text>
-                  </Pressable>
+            <Text accessibilityRole="header" style={styles.sourcesTitle}>Эх сурвалж ({sources.length})</Text>
+            {sources.length ? sources.map((source, index) => (
+              <Pressable key={`${source.url}-${index}`} accessibilityRole="link" accessibilityLabel={`${source.title} эх сурвалжийг нээх`} onPress={() => void Linking.openURL(source.url)} style={({ pressed }) => [styles.source, pressed && styles.pressed]}>
+                <View style={styles.sourceText}>
+                  <Text numberOfLines={2} style={styles.sourceTitle}>{source.title || source.source || 'Эх сурвалж'}</Text>
+                  <Text numberOfLines={1} style={styles.sourceUrl}>{source.source || source.url}</Text>
                 </View>
-              ))}
-            </View>
-          )}
-
-          {!loading &&
-            !error &&
-            results.length === 0 && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>ðŸ§ </Text>
-
-                <Text style={styles.emptyTitle}>
-                  Knowledge Search
-                </Text>
-
-                <Text style={styles.emptyDescription}>
-                  ÐÑÑƒÑƒÐ»Ñ‚ ÑÑÐ²ÑÐ» Ñ‚Ò¯Ð»Ñ…Ò¯Ò¯Ñ€ Ò¯Ð³ Ð¾Ñ€ÑƒÑƒÐ»Ð°Ð°Ð´
-                  Ñ…Ð°Ð¹Ð»Ñ‚ Ñ…Ð¸Ð¹Ð½Ñ Ò¯Ò¯.
-                </Text>
-              </View>
-            )}
-        </ScrollView>
-
-        <Text style={styles.footer}>
-          ENKH AI Â· Knowledge Search
-        </Text>
-
-      </View>
+                <Text style={styles.arrow}>↗</Text>
+              </Pressable>
+            )) : <Text style={styles.noSources}>Энэ хариунд тусдаа эх сурвалж ирсэнгүй.</Text>}
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F7F5',
-  },
-
-  content: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 1100,
-    alignSelf: 'center',
-    paddingHorizontal: 28,
-    paddingTop: 18,
-  },
-
-  header: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  backText: {
-    fontSize: 34,
-    lineHeight: 36,
-    color: '#111111',
-  },
-
-  headerCenter: {
-    alignItems: 'center',
-  },
-
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 3,
-    color: '#111111',
-  },
-
-  headerStatus: {
-    marginTop: 3,
-    fontSize: 8,
-    letterSpacing: 2,
-    color: '#999999',
-  },
-
-  headerPlaceholder: {
-    width: 44,
-  },
-
-  scroll: {
-    flex: 1,
-  },
-
-  scrollContent: {
-    paddingBottom: 30,
-  },
-
-  hero: {
-    alignItems: 'center',
-    paddingTop: 42,
-    paddingBottom: 34,
-  },
-
-  iconCircle: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    backgroundColor: '#111111',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 18,
-  },
-
-  icon: {
-    fontSize: 32,
-  },
-
-  title: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#111111',
-    textAlign: 'center',
-  },
-
-  subtitle: {
-    marginTop: 8,
-    fontSize: 16,
-    color: '#777777',
-    textAlign: 'center',
-  },
-
-  searchWrapper: {
-    minHeight: 66,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 18,
-    paddingRight: 8,
-  },
-
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111111',
-    paddingVertical: 14,
-  },
-
-  searchButton: {
-    minWidth: 82,
-    height: 48,
-    borderRadius: 18,
-    backgroundColor: '#111111',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-  },
-
-  searchButtonDisabled: {
-    opacity: 0.6,
-  },
-
-  searchButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  loadingState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#777777',
-  },
-
-  errorCard: {
-    marginTop: 24,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    padding: 20,
-    alignItems: 'center',
-  },
-
-  errorIcon: {
-    fontSize: 26,
-    marginBottom: 10,
-  },
-
-  errorText: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#666666',
-    textAlign: 'center',
-  },
-
-  results: {
-    marginTop: 28,
-    gap: 14,
-  },
-
-  resultsTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111111',
-    marginBottom: 2,
-  },
-
-  resultCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    padding: 20,
-  },
-
-  resultTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  resultIcon: {
-    fontSize: 24,
-  },
-
-  resultCategory: {
-    backgroundColor: '#F2F2F2',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-
-  categoryText: {
-    fontSize: 11,
-    color: '#777777',
-    fontWeight: '600',
-  },
-
-  resultTitle: {
-    marginTop: 16,
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111111',
-  },
-
-  resultDescription: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#777777',
-  },
-
-  openButton: {
-    alignSelf: 'flex-start',
-    marginTop: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    backgroundColor: '#F2F2F2',
-  },
-
-  openButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#222222',
-  },
-
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 70,
-  },
-
-  emptyIcon: {
-    fontSize: 34,
-    marginBottom: 14,
-  },
-
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#222222',
-  },
-
-  emptyDescription: {
-    marginTop: 7,
-    maxWidth: 420,
-    textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#888888',
-  },
-
-  footer: {
-    textAlign: 'center',
-    fontSize: 11,
-    color: '#AAAAAA',
-    paddingVertical: 14,
-  },
+  page: { flex: 1, backgroundColor: '#F7F7F5' },
+  content: { width: '100%', maxWidth: 920, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 42, paddingBottom: 56 },
+  heading: { maxWidth: 720 },
+  title: { fontSize: 38, lineHeight: 46, fontWeight: '900', color: '#171717' },
+  subtitle: { marginTop: 12, fontSize: 16, lineHeight: 24, color: '#6B6B6B' },
+  searchBox: { marginTop: 28, flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD' },
+  input: { flex: 1, minHeight: 48, paddingHorizontal: 13, fontSize: 16, color: '#171717' },
+  button: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 22, borderRadius: 14, backgroundColor: '#171717' },
+  buttonText: { color: '#FFF', fontWeight: '800' },
+  disabled: { opacity: 0.3 },
+  pressed: { opacity: 0.7 },
+  state: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 44, justifyContent: 'center' },
+  stateText: { color: '#686868' },
+  error: { marginTop: 24, padding: 20, borderRadius: 18, backgroundColor: '#FFF4F2', borderWidth: 1, borderColor: '#F1C9C1' },
+  errorTitle: { fontSize: 16, fontWeight: '800', color: '#8B2C20' },
+  errorText: { marginTop: 6, fontSize: 14, lineHeight: 21, color: '#744139' },
+  results: { marginTop: 28, gap: 12 },
+  answerCard: { padding: 24, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E1E1DD' },
+  label: { fontSize: 11, letterSpacing: 1.8, fontWeight: '900', color: '#777' },
+  answer: { marginTop: 14, fontSize: 16, lineHeight: 26, color: '#202020' },
+  sourcesTitle: { marginTop: 18, fontSize: 20, fontWeight: '900', color: '#171717' },
+  source: { minHeight: 76, flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E1E1DD' },
+  sourceText: { flex: 1 },
+  sourceTitle: { fontSize: 15, lineHeight: 21, fontWeight: '700', color: '#202020' },
+  sourceUrl: { marginTop: 4, fontSize: 12, color: '#777' },
+  arrow: { marginLeft: 12, fontSize: 20, color: '#555' },
+  noSources: { color: '#777', fontSize: 14 },
 });

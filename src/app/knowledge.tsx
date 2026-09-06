@@ -1,244 +1,46 @@
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+
+import { AppHeader } from '../components/app-header';
 
 export default function KnowledgeScreen() {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.page}>
+      <AppHeader />
       <View style={styles.content}>
-
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Text style={styles.backText}>‹</Text>
-          </Pressable>
-
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>KNOWLEDGE</Text>
-            <Text style={styles.headerStatus}>ENKH AI</Text>
-          </View>
-
-          <View style={styles.headerPlaceholder} />
-        </View>
-
-        <View style={styles.hero}>
-          <View style={styles.iconCircle}>
-            <Text style={styles.icon}>🧠</Text>
-          </View>
-
-          <Text style={styles.title}>
-            ENKH Knowledge
-          </Text>
-
-          <Text style={styles.subtitle}>
-            Энхийн мэдлэгийн сан
-          </Text>
-        </View>
-
+        <Text style={styles.eyebrow}>ENKH KNOWLEDGE</Text>
+        <Text accessibilityRole="header" style={styles.title}>Мэдлэг авах хоёр арга</Text>
+        <Text style={styles.subtitle}>AI-аас шууд асуух эсвэл бодит вэбээс эх сурвалжтай хайлт хийх.</Text>
         <View style={styles.cards}>
-
-          {/* Мэдлэг хайх */}
-          <Pressable
-            style={styles.card}
-            onPress={() => router.push('/knowledge-search')}
-          >
-            <Text style={styles.cardIcon}>📚</Text>
-
-            <Text style={styles.cardTitle}>
-              Мэдлэг хайх
-            </Text>
-
-            <Text style={styles.cardDescription}>
-              Энхийн мэдлэгийн сангаас мэдээлэл хайх
-            </Text>
-          </Pressable>
-
-          {/* Баримт бичиг */}
-          <Pressable style={styles.card}>
-            <Text style={styles.cardIcon}>📄</Text>
-
-            <Text style={styles.cardTitle}>
-              Баримт бичиг
-            </Text>
-
-            <Text style={styles.cardDescription}>
-              Файл болон баримтуудаа мэдлэгийн санд ашиглах
-            </Text>
-          </Pressable>
-
-          {/* Ангилал */}
-          <Pressable style={styles.card}>
-            <Text style={styles.cardIcon}>🗂️</Text>
-
-            <Text style={styles.cardTitle}>
-              Ангилал
-            </Text>
-
-            <Text style={styles.cardDescription}>
-              Мэдлэгийг сэдэв болон төслөөр зохион байгуулах
-            </Text>
-          </Pressable>
-
-          {/* Smart Search */}
-          <Pressable
-            style={styles.card}
-            onPress={() => router.push('/knowledge-search')}
-          >
-            <Text style={styles.cardIcon}>🔎</Text>
-
-            <Text style={styles.cardTitle}>
-              Smart Search
-            </Text>
-
-            <Text style={styles.cardDescription}>
-              Асуултаар холбогдох мэдээллийг ухаалгаар олох
-            </Text>
-          </Pressable>
-
+          <KnowledgeCard title="AI-аас асуух" description="Ерөнхий мэдлэг, тайлбар, санаа боловсруулахад тохиромжтой." action="Chat нээх" onPress={() => router.push('/chat')} />
+          <KnowledgeCard title="Вэбээс хайх" description="Сүүлийн үеийн мэдээлэл, холбоос, эх сурвалж шаардлагатай үед ашиглана." action="Search нээх" onPress={() => router.push('/knowledge-search')} />
         </View>
-
-        <Text style={styles.footer}>
-          ENKH AI · Knowledge System
-        </Text>
-
       </View>
     </SafeAreaView>
   );
 }
 
+function KnowledgeCard({ title, description, action, onPress }: { title: string; description: string; action: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="link" onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardDescription}>{description}</Text>
+      <Text style={styles.action}>{action} →</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F7F5',
-  },
-
-  content: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 1100,
-    alignSelf: 'center',
-    paddingHorizontal: 28,
-    paddingVertical: 24,
-  },
-
-  header: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  backText: {
-    fontSize: 34,
-    lineHeight: 36,
-    color: '#111111',
-  },
-
-  headerCenter: {
-    alignItems: 'center',
-  },
-
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 3,
-    color: '#111111',
-  },
-
-  headerStatus: {
-    marginTop: 3,
-    fontSize: 8,
-    letterSpacing: 2,
-    color: '#999999',
-  },
-
-  headerPlaceholder: {
-    width: 44,
-  },
-
-  hero: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 50,
-  },
-
-  iconCircle: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    backgroundColor: '#111111',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 22,
-  },
-
-  icon: {
-    fontSize: 38,
-  },
-
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#111111',
-    textAlign: 'center',
-  },
-
-  subtitle: {
-    marginTop: 8,
-    fontSize: 17,
-    color: '#777777',
-    textAlign: 'center',
-  },
-
-  cards: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-
-  card: {
-    flex: 1,
-    minWidth: 220,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-  },
-
-  cardIcon: {
-    fontSize: 28,
-    marginBottom: 16,
-  },
-
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111111',
-  },
-
-  cardDescription: {
-    marginTop: 7,
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#888888',
-  },
-
-  footer: {
-    textAlign: 'center',
-    fontSize: 11,
-    color: '#AAAAAA',
-    marginTop: 22,
-  },
+  page: { flex: 1, backgroundColor: '#F7F7F5' },
+  content: { flex: 1, width: '100%', maxWidth: 920, alignSelf: 'center', justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 48 },
+  eyebrow: { fontSize: 11, letterSpacing: 2.2, fontWeight: '900', color: '#777', textAlign: 'center' },
+  title: { marginTop: 16, fontSize: 40, lineHeight: 48, fontWeight: '900', color: '#171717', textAlign: 'center' },
+  subtitle: { marginTop: 12, fontSize: 16, lineHeight: 24, color: '#686868', textAlign: 'center' },
+  cards: { marginTop: 34, flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  card: { flexGrow: 1, flexBasis: 300, minHeight: 210, padding: 24, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E1E1DD' },
+  cardTitle: { fontSize: 22, fontWeight: '900', color: '#171717' },
+  cardDescription: { flex: 1, marginTop: 12, fontSize: 15, lineHeight: 23, color: '#686868' },
+  action: { marginTop: 24, fontSize: 14, fontWeight: '900', color: '#171717' },
+  pressed: { opacity: 0.7 },
 });
