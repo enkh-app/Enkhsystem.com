@@ -12,10 +12,10 @@ const empty = () => ({ version: 1, sessions: [], entries: [] });
 
 function harness(options = {}) {
   const timers = []; const storageValues = new Map(); const calls = [];
-  let email = options.email || 'account@example.test'; let fail = options.fail; let revision = options.revision || 3;
+  let email = options.email === undefined ? 'account@example.test' : options.email; const picture = options.picture || ''; let fail = options.fail; let revision = options.revision || 3;
   const api = {
     AdminApiError,
-    getAuthState: async () => email ? ({ authenticated: true, admin: false, user: { email } }) : ({ authenticated: false, admin: false }),
+    getAuthState: async () => (email || picture) ? ({ authenticated: true, admin: false, user: { email, picture } }) : ({ authenticated: false, admin: false }),
     getCloudWorkspace: async () => ({ revision, workspace: options.remote || empty() }),
     syncCloudWorkspace: async (workspace, expectedRevision) => { calls.push({ workspace, expectedRevision }); if (options.syncImpl) return options.syncImpl(workspace, expectedRevision, calls.length); if (fail) throw fail; revision += 1; return { revision, workspace }; },
   };
@@ -100,4 +100,38 @@ test('root lifecycle initializes sync before direct calculation and exposes its 
   assert.match(layout, /WorkspaceSyncBootstrap/);
   assert.match(calculation, /WorkspaceSyncStatus/);
   assert.ok(calculation.indexOf('saveWorkspace(next)') < calculation.indexOf('backgroundWorkspaceSync.schedule(next)'));
+});
+
+test('manual revision-two recovery enables the next calculation background PUT at revision two', async () => {
+  const cloud = empty();
+  const diverged = { ...empty(), sessions: [{ id: 'preserved-local' }] };
+  const fresh = { ...diverged, sessions: [...diverged.sessions, { id: 'fresh-calculation' }] };
+  const h = harness({
+    revision: 1,
+    remote: cloud,
+    syncImpl: async (workspace, expectedRevision) => {
+      assert.equal(expectedRevision, 2);
+      return { revision: 3, workspace };
+    },
+  });
+  await h.coordinator.initialize(diverged);
+  assert.equal(h.coordinator.getSnapshot().phase, 'conflict');
+  await h.coordinator.bind(2, diverged);
+  assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 2 });
+  h.coordinator.schedule(fresh);
+  await h.runLatest();
+  assert.equal(h.calls.length, 1);
+  assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 3 });
+});
+
+test('manual recovery binds through an existing stable Auth0 picture claim when email is absent', async () => {
+  const local = { ...empty(), sessions: [{ id: 'local' }] };
+  const h = harness({ email: '', picture: 'https://identity.example/profile-id', revision: 1, remote: empty(), syncImpl: async (workspace, expectedRevision) => ({ revision: expectedRevision + 1, workspace }) });
+  await h.coordinator.initialize(local);
+  assert.equal(h.coordinator.getSnapshot().phase, 'conflict');
+  await h.coordinator.bind(2, local);
+  h.coordinator.schedule({ ...local, sessions: [...local.sessions, { id: 'fresh' }] });
+  await h.runLatest();
+  assert.equal(h.calls[0].expectedRevision, 2);
+  assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 3 });
 });
