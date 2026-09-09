@@ -167,6 +167,28 @@ test('manual bind revision four survives route navigation without a redundant au
   assert.equal(authCalls, 2);
 });
 
+test('transient live identity recheck preserves local state and safely retries revision five', async () => {
+  let authCalls = 0;
+  const getAuthState = async () => {
+    authCalls += 1;
+    if (authCalls === 2) throw new Error('temporary auth network failure');
+    return { authenticated: true, admin: false, user: { accountId: 'opaque-account-fixture', email: '' } };
+  };
+  const baseline = { ...empty(), sessions: [{ id: 'revision-five-baseline' }] };
+  const next = { ...baseline, sessions: [...baseline.sessions, { id: 'unsynced-calculation' }] };
+  const h = harness({ getAuthState, revision: 4, remote: empty(), syncImpl: async (workspace, expectedRevision) => ({ revision: expectedRevision + 1, workspace }) });
+  await h.coordinator.initialize(baseline);
+  await h.coordinator.bind(5, baseline);
+  h.coordinator.schedule(next);
+  await h.runLatest();
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.coordinator.getSnapshot().phase, 'pending');
+  await h.runLatest();
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].expectedRevision, 5);
+  assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 6 });
+});
+
 test('restored local backup remains pending and cannot auto-sync until explicit bind', async () => {
   const h = harness(); await h.coordinator.initialize(empty());
   h.coordinator.markLocalDivergent();

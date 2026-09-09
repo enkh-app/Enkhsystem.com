@@ -34,6 +34,8 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
   let latest: WorkspaceState | null = null;
   let generation = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let retryAttempts = 0;
   let inFlight = false;
   const listeners = new Set<() => void>();
 
@@ -72,6 +74,13 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
     return initializing;
   };
 
+  const scheduleTransientRetry = () => {
+    if (retryTimer || !latest || !enabled) return;
+    const delay = Math.min(30000, 2000 * (2 ** retryAttempts));
+    retryAttempts += 1;
+    retryTimer = deps.setTimer(() => { retryTimer = null; void drain(); }, delay);
+  };
+
   const drain = async () => {
     if (inFlight || !latest || !enabled) return;
     inFlight = true;
@@ -83,12 +92,16 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
       if (!key) { publish('pending'); return; }
       if (key !== ownerKey) { enabled = false; publish('conflict'); return; }
       const result = await deps.syncCloudWorkspace(state, snapshot.revision);
+      retryAttempts = 0;
       publish('synced', result.revision);
       writeMeta();
       if (generation === startedGeneration) latest = null;
     } catch (error) {
       if (error instanceof AdminApiError && error.status === 409) { enabled = false; publish('conflict'); }
-      else publish('pending');
+      else {
+        publish('pending');
+        if (!(error instanceof AdminApiError) || error.status >= 500) scheduleTransientRetry();
+      }
     } finally {
       inFlight = false;
       if (latest && generation !== startedGeneration && enabled) schedule(latest);
@@ -97,6 +110,7 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
 
   const schedule = (state: WorkspaceState) => {
     latest = state; generation += 1; publish('pending');
+    if (retryTimer) { deps.clearTimer(retryTimer); retryTimer = null; }
     void initialize(state).then(() => {
       if (!enabled) return;
       if (timer) deps.clearTimer(timer);
@@ -113,6 +127,7 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
   const retry = () => { if (latest && enabled) schedule(latest); };
   const markLocalDivergent = () => {
     if (timer) { deps.clearTimer(timer); timer = null; }
+    if (retryTimer) { deps.clearTimer(retryTimer); retryTimer = null; }
     generation += 1; latest = null; enabled = false; initialized = true;
     publish('pending');
   };
