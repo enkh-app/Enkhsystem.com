@@ -11,7 +11,7 @@ new Function('exports', 'require', 'module', '__filename', '__dirname', code)(st
 
 function memoryStorage(initial) {
   const values = new Map(initial ? [[store.exports.WORKSPACE_STORAGE_KEY, initial]] : []);
-  return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) };
+  return { values, getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) };
 }
 
 test('create session, deterministic title, save and reload persistence', () => {
@@ -60,4 +60,37 @@ test('duplicate entry id is ignored', () => {
   const entry = { id: 'same', sessionId: 's', role: 'user', type: 'message', content: 'one', createdAt: new Date().toISOString() };
   const once = store.exports.addEntry(base, entry);
   assert.equal(store.exports.addEntry(once, { ...entry, content: 'two' }).entries.length, 1);
+});
+
+test('backup inspection is read-only and reports only validated aggregate metadata', () => {
+  const storage = memoryStorage();
+  let state = store.exports.emptyWorkspace();
+  for (const type of ['chat', 'search', 'action']) state = store.exports.createSession(state, type, type).state;
+  const raw = JSON.stringify(state); storage.values.set(store.exports.WORKSPACE_BACKUP_KEY, raw);
+  const before = new Map(storage.values); const summary = store.exports.inspectWorkspaceBackup(storage);
+  assert.deepEqual(summary.counts, { chat: 1, search: 1, action: 1 });
+  assert.equal(summary.sessionCount, 3); assert.equal(summary.schemaVersion, 1); assert.ok(summary.timestamp);
+  assert.deepEqual([...storage.values], [...before]);
+});
+
+test('valid restore preserves active snapshot and original backup without cloud access', () => {
+  const active = store.exports.createSession(store.exports.emptyWorkspace(), 'chat', 'active').state;
+  const backup = store.exports.createSession(store.exports.emptyWorkspace(), 'action', 'backup').state;
+  const storage = memoryStorage(JSON.stringify(active)); const originalBackup = JSON.stringify(backup);
+  storage.values.set(store.exports.WORKSPACE_BACKUP_KEY, originalBackup);
+  const restored = store.exports.restoreWorkspaceBackup(storage, new Date('2026-09-09T00:00:00.000Z'));
+  assert.deepEqual(restored.state, backup);
+  assert.deepEqual(JSON.parse(storage.getItem(store.exports.WORKSPACE_STORAGE_KEY)), backup);
+  assert.equal(storage.getItem(store.exports.WORKSPACE_BACKUP_KEY), originalBackup);
+  const snapshot = JSON.parse(storage.getItem(restored.snapshotKey));
+  assert.deepEqual(snapshot.workspace, active);
+});
+
+test('malformed backup is rejected without touching current local data', () => {
+  const active = store.exports.createSession(store.exports.emptyWorkspace(), 'chat', 'active').state;
+  const storage = memoryStorage(JSON.stringify(active)); storage.values.set(store.exports.WORKSPACE_BACKUP_KEY, '{broken');
+  const before = new Map(storage.values);
+  assert.equal(store.exports.restoreWorkspaceBackup(storage), null);
+  assert.deepEqual([...storage.values], [...before]);
+  assert.deepEqual(store.exports.inspectWorkspaceBackup(storage), { exists: true, valid: false, sessionCount: 0, counts: { chat: 0, search: 0, action: 0 } });
 });

@@ -135,3 +135,20 @@ test('manual recovery binds through the opaque account ID from the real auth res
   assert.equal(h.calls[0].expectedRevision, 2);
   assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 3 });
 });
+
+test('restored local backup remains pending and cannot auto-sync until explicit bind', async () => {
+  const h = harness(); await h.coordinator.initialize(empty());
+  h.coordinator.markLocalDivergent();
+  h.coordinator.schedule({ ...empty(), sessions: [{ id: 'restored-backup' }] });
+  await h.runLatest();
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.coordinator.getSnapshot().phase, 'pending');
+});
+
+test('workspace recovery UI never calls a cloud write during restore', () => {
+  const screen = readFileSync(join(root, 'src/app/workspace.tsx'), 'utf8');
+  const restoreBody = screen.slice(screen.indexOf('const restoreBackup'), screen.indexOf('const open'));
+  assert.match(restoreBody, /restoreWorkspaceBackup/);
+  assert.match(restoreBody, /markLocalDivergent/);
+  assert.doesNotMatch(restoreBody, /syncCloudWorkspace|importCloudWorkspace|schedule\(/);
+});

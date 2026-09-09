@@ -3,6 +3,7 @@ import type { ChatMessage, SearchSource } from './api';
 export const WORKSPACE_STORAGE_KEY = 'enkh.workspace.v1';
 export const WORKSPACE_SCHEMA_VERSION = 1;
 export const WORKSPACE_BACKUP_KEY = 'enkh.workspace.backup.v1';
+export const WORKSPACE_RECOVERY_SNAPSHOT_PREFIX = 'enkh.workspace.pre-restore.v1.';
 export const MAX_CONTEXT_MESSAGES = 12;
 export const MAX_CONTEXT_CHARS = 12000;
 
@@ -43,6 +44,14 @@ export type StorageLike = {
 };
 
 export type LoadResult = { state: WorkspaceState; issue?: 'unavailable' | 'corrupt' };
+export type BackupInspection = {
+  exists: boolean;
+  valid: boolean;
+  sessionCount: number;
+  schemaVersion?: number;
+  timestamp?: string;
+  counts: { chat: number; search: number; action: number };
+};
 
 export const emptyWorkspace = (): WorkspaceState => ({ version: WORKSPACE_SCHEMA_VERSION, sessions: [], entries: [] });
 
@@ -56,6 +65,20 @@ function validState(value: unknown): value is WorkspaceState {
   if (!value || typeof value !== 'object') return false;
   const state = value as Partial<WorkspaceState>;
   return state.version === WORKSPACE_SCHEMA_VERSION && Array.isArray(state.sessions) && Array.isArray(state.entries);
+}
+
+function validRecoveryState(value: unknown): value is WorkspaceState {
+  if (!validState(value)) return false;
+  return value.sessions.every((session) =>
+    session && typeof session.id === 'string' && typeof session.title === 'string' &&
+    (session.type === 'chat' || session.type === 'search' || session.type === 'action') &&
+    typeof session.createdAt === 'string' && typeof session.updatedAt === 'string'
+  ) && value.entries.every((entry) =>
+    entry && typeof entry.id === 'string' && typeof entry.sessionId === 'string' &&
+    (entry.role === 'user' || entry.role === 'assistant' || entry.role === 'system') &&
+    (entry.type === 'message' || entry.type === 'search' || entry.type === 'action') &&
+    typeof entry.content === 'string' && typeof entry.createdAt === 'string'
+  );
 }
 
 export function loadWorkspace(storage?: StorageLike): LoadResult {
@@ -141,4 +164,41 @@ export function replaceWorkspaceSafely(next: WorkspaceState, storage?: StorageLi
     target.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(next));
     return true;
   } catch { return false; }
+}
+
+export function inspectWorkspaceBackup(storage?: StorageLike): BackupInspection {
+  const empty = { exists: false, valid: false, sessionCount: 0, counts: { chat: 0, search: 0, action: 0 } };
+  const target = storageOrNull(storage);
+  if (!target) return empty;
+  try {
+    const raw = target.getItem(WORKSPACE_BACKUP_KEY);
+    if (!raw) return empty;
+    const parsed: unknown = JSON.parse(raw);
+    if (!validRecoveryState(parsed)) return { ...empty, exists: true };
+    const counts = { chat: 0, search: 0, action: 0 };
+    let timestamp = '';
+    for (const session of parsed.sessions) {
+      counts[session.type] += 1;
+      if (session.updatedAt > timestamp) timestamp = session.updatedAt;
+    }
+    return { exists: true, valid: true, sessionCount: parsed.sessions.length, schemaVersion: parsed.version, timestamp: timestamp || undefined, counts };
+  } catch { return { ...empty, exists: true }; }
+}
+
+export function restoreWorkspaceBackup(storage?: StorageLike, now = new Date()): { state: WorkspaceState; snapshotKey: string } | null {
+  const target = storageOrNull(storage);
+  if (!target) return null;
+  try {
+    const backupRaw = target.getItem(WORKSPACE_BACKUP_KEY);
+    if (!backupRaw) return null;
+    const backup: unknown = JSON.parse(backupRaw);
+    if (!validRecoveryState(backup)) return null;
+    const activeRaw = target.getItem(WORKSPACE_STORAGE_KEY);
+    const active: unknown = activeRaw ? JSON.parse(activeRaw) : emptyWorkspace();
+    if (!validRecoveryState(active)) return null;
+    const snapshotKey = `${WORKSPACE_RECOVERY_SNAPSHOT_PREFIX}${now.toISOString()}`;
+    target.setItem(snapshotKey, JSON.stringify({ createdAt: now.toISOString(), workspace: active }));
+    target.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(backup));
+    return { state: backup, snapshotKey };
+  } catch { return null; }
 }

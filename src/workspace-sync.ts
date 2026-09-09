@@ -110,8 +110,13 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
     publish('synced', revision); writeMeta();
   };
   const retry = () => { if (latest && enabled) schedule(latest); };
+  const markLocalDivergent = () => {
+    if (timer) { deps.clearTimer(timer); timer = null; }
+    generation += 1; latest = null; enabled = false; initialized = true;
+    publish('pending');
+  };
   const subscribe = (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); };
-  return { initialize, schedule, bind, retry, subscribe, getSnapshot: () => snapshot };
+  return { initialize, schedule, bind, retry, markLocalDivergent, subscribe, getSnapshot: () => snapshot };
 }
 
 export const backgroundWorkspaceSync = createWorkspaceSyncCoordinator();

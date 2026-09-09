@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../components/app-header';
 import { AdminApiError, getAuthState, getCloudWorkspace, importCloudWorkspace, syncCloudWorkspace } from '../api';
-import { clearWorkspace, deleteSession, loadWorkspace, replaceWorkspaceSafely, saveWorkspace, WorkspaceSession, WorkspaceState } from '../workspace-store';
+import { BackupInspection, clearWorkspace, deleteSession, inspectWorkspaceBackup, loadWorkspace, replaceWorkspaceSafely, restoreWorkspaceBackup, saveWorkspace, WorkspaceSession, WorkspaceState } from '../workspace-store';
 import { backgroundWorkspaceSync } from '../workspace-sync';
 
 export default function WorkspaceScreen() {
@@ -15,11 +15,14 @@ export default function WorkspaceScreen() {
   const [cloud, setCloud] = useState<{ authenticated: boolean; revision: number; workspace: WorkspaceState | null }>({ authenticated: false, revision: 0, workspace: null });
   const [cloudBusy, setCloudBusy] = useState(false);
   const [cloudNotice, setCloudNotice] = useState('');
+  const [backup, setBackup] = useState<BackupInspection>(() => inspectWorkspaceBackup());
+  const [confirmingRestore, setConfirmingRestore] = useState(false);
 
   const reload = useCallback(() => {
     const loaded = loadWorkspace();
     setState(loaded.state);
     setIssue(loaded.issue);
+    setBackup(inspectWorkspaceBackup());
   }, []);
   useFocusEffect(reload);
 
@@ -49,8 +52,17 @@ export default function WorkspaceScreen() {
     finally { setCloudBusy(false); }
   };
   const loadCloud = () => {
-    if (cloud.workspace && replaceWorkspaceSafely(cloud.workspace)) { setState(cloud.workspace); void backgroundWorkspaceSync.bind(cloud.revision, cloud.workspace); setCloudNotice('Cloud copy ачааллаа. Өмнөх local copy backup хэлбэрээр хадгалагдсан.'); }
+    if (cloud.workspace && replaceWorkspaceSafely(cloud.workspace)) { setState(cloud.workspace); setBackup(inspectWorkspaceBackup()); void backgroundWorkspaceSync.bind(cloud.revision, cloud.workspace); setCloudNotice('Cloud copy ачааллаа. Өмнөх local copy backup хэлбэрээр хадгалагдсан.'); }
     else setCloudNotice('Cloud copy ачаалж чадсангүй. Local history өөрчлөгдөөгүй.');
+  };
+  const restoreBackup = () => {
+    const restored = restoreWorkspaceBackup();
+    if (!restored) { setCloudNotice('Backup schema буруу эсвэл сэргээх боломжгүй. Одоогийн local workspace өөрчлөгдөөгүй.'); setConfirmingRestore(false); return; }
+    setState(restored.state);
+    setBackup(inspectWorkspaceBackup());
+    backgroundWorkspaceSync.markLocalDivergent();
+    setConfirmingRestore(false);
+    setCloudNotice(`Backup local workspace-д сэргээгдлээ. Cloud revision ${cloud.revision} өөрчлөгдөөгүй; бэлэн болсон үед manual sync хийнэ.`);
   };
 
   const open = (session: WorkspaceSession) => {
@@ -76,6 +88,15 @@ export default function WorkspaceScreen() {
           {cloud.authenticated && <View style={styles.cloudCard}><Text style={styles.noticeTitle}>Cloud workspace</Text><Text style={styles.noticeText}>{cloud.workspace ? `Revision ${cloud.revision}. Өөрчлөлт background-аар sync хийгдэнэ; товчлуур нь manual fallback.` : 'Cloud copy хоосон. Local history-г explicit import хийж болно.'}</Text><View style={styles.cloudActions}>{!cloud.workspace ? <Pressable disabled={cloudBusy} accessibilityRole="button" onPress={() => void importLocal()} style={styles.newButton}><Text style={styles.newButtonText}>Local history import</Text></Pressable> : <><Pressable disabled={cloudBusy} accessibilityRole="button" onPress={() => void syncLocal()} style={styles.newButton}><Text style={styles.newButtonText}>Cloud руу sync</Text></Pressable><Pressable disabled={cloudBusy} accessibilityRole="button" onPress={loadCloud} style={styles.cancel}><Text style={styles.cancelText}>Cloud copy ачаалах</Text></Pressable></>}</View></View>}
         {!!cloudNotice && <Text accessibilityLiveRegion="polite" style={styles.warning}>{cloudNotice}</Text>}
 
+        {backup.exists && <View style={styles.backupCard}>
+          <Text style={styles.noticeTitle}>Local backup {backup.valid ? 'бэлэн' : 'уншигдсангүй'}</Text>
+          {backup.valid ? <>
+            <Text style={styles.noticeText}>Session: {backup.sessionCount} · Chat: {backup.counts.chat} · Search: {backup.counts.search} · Action: {backup.counts.action}</Text>
+            <Text style={styles.backupMeta}>Schema v{backup.schemaVersion}{backup.timestamp ? ` · Сүүлийн local update: ${new Date(backup.timestamp).toLocaleString()}` : ''}</Text>
+            {confirmingRestore ? <View style={styles.restoreConfirm}><Text style={styles.confirmText}>Одоогийн local copy тусдаа snapshot болж хадгалагдана. Cloud revision {cloud.revision} өөрчлөгдөхгүй. Backup-аас сэргээх үү?</Text><Pressable accessibilityRole="button" onPress={restoreBackup} style={styles.confirmDelete}><Text style={styles.confirmDeleteText}>Сэргээх</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setConfirmingRestore(false)} style={styles.cancel}><Text style={styles.cancelText}>Болих</Text></Pressable></View> : <Pressable accessibilityRole="button" onPress={() => setConfirmingRestore(true)} style={styles.restoreButton}><Text style={styles.restoreButtonText}>Backup-аас сэргээх</Text></Pressable>}
+          </> : <Text style={styles.noticeText}>Backup schema баталгаажаагүй тул restore хаалттай. Одоогийн local data өөрчлөгдөөгүй.</Text>}
+        </View>}
+
         {!state.sessions.length ? (
           <View style={styles.empty}><Text style={styles.emptyTitle}>Одоогоор history алга</Text><Text style={styles.emptyText}>Chat, Search эсвэл Calculation ажиллуулахад session энд автоматаар хадгалагдана.</Text></View>
         ) : (
@@ -92,7 +113,7 @@ export default function WorkspaceScreen() {
         )}
 
         {!!state.sessions.length && (confirming === 'all' ? <View style={styles.clearConfirm}><Text style={styles.confirmText}>Бүх local history-г устгах уу?</Text><Pressable accessibilityRole="button" onPress={clearAll} style={styles.confirmDelete}><Text style={styles.confirmDeleteText}>Бүгдийг устгах</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setConfirming('')} style={styles.cancel}><Text style={styles.cancelText}>Болих</Text></Pressable></View> : <Pressable accessibilityRole="button" accessibilityLabel="Бүх local history цэвэрлэх" onPress={() => setConfirming('all')} style={styles.clearButton}><Text style={styles.clearText}>Бүх history-г цэвэрлэх</Text></Pressable>)}
-        <Text style={styles.privacy}>Privacy: local history browser-д хадгалагдана. Нэвтэрсэн үед cloud import/sync зөвхөн таны explicit үйлдлээр хийгдэнэ.</Text>
+        <Text style={styles.privacy}>Privacy: local history болон recovery backup browser-д хадгалагдана. Restore өөрөө cloud sync хийхгүй.</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -104,6 +125,7 @@ const styles = StyleSheet.create({
   newButton:{minHeight:48,justifyContent:'center',paddingHorizontal:18,borderRadius:14,backgroundColor:'#171717'},newButtonText:{color:'#FFF',fontWeight:'800'},
   notice:{marginTop:24,padding:18,borderRadius:16,backgroundColor:'#FFF4E3',borderWidth:1,borderColor:'#E9C98B'},noticeTitle:{fontWeight:'800',color:'#6F4A13'},noticeText:{marginTop:5,color:'#765A31'},
   cloudCard:{marginTop:24,padding:18,borderRadius:16,backgroundColor:'#FFF',borderWidth:1,borderColor:'#D6E5D8'},cloudActions:{marginTop:14,flexDirection:'row',flexWrap:'wrap',gap:8},warning:{marginTop:12,padding:10,borderRadius:10,backgroundColor:'#FFF4E3',color:'#6F4A13',fontSize:12},
+  backupCard:{marginTop:16,padding:18,borderRadius:16,backgroundColor:'#F3F0FF',borderWidth:1,borderColor:'#D8D0F1'},backupMeta:{marginTop:6,fontSize:12,color:'#6D6580'},restoreButton:{alignSelf:'flex-start',minHeight:44,justifyContent:'center',marginTop:14,paddingHorizontal:14,borderRadius:11,backgroundColor:'#312A45'},restoreButtonText:{color:'#FFF',fontSize:13,fontWeight:'800'},restoreConfirm:{marginTop:14,gap:8},
   empty:{marginTop:28,minHeight:240,alignItems:'center',justifyContent:'center',padding:24,borderRadius:20,backgroundColor:'#FFF',borderWidth:1,borderColor:'#E1E1DD'},emptyTitle:{fontSize:20,fontWeight:'900',color:'#171717'},emptyText:{marginTop:9,maxWidth:480,textAlign:'center',fontSize:15,lineHeight:23,color:'#777'},
   list:{marginTop:28,gap:10},session:{minHeight:106,flexDirection:'row',alignItems:'center',borderRadius:18,backgroundColor:'#FFF',borderWidth:1,borderColor:'#E1E1DD'},openArea:{flex:1,minHeight:104,justifyContent:'center',padding:18},kind:{fontSize:10,letterSpacing:1.3,fontWeight:'900',color:'#777'},sessionTitle:{marginTop:6,fontSize:17,lineHeight:23,fontWeight:'800',color:'#171717'},date:{marginTop:5,fontSize:12,color:'#888'},
   deleteButton:{minWidth:76,minHeight:48,alignItems:'center',justifyContent:'center',marginRight:12,borderRadius:12,backgroundColor:'#F3F1EE'},deleteText:{fontSize:13,fontWeight:'800',color:'#8B2C20'},confirm:{marginRight:10,alignItems:'center',gap:4},confirmText:{fontSize:12,fontWeight:'800',color:'#6A3129'},confirmDelete:{minHeight:44,minWidth:58,alignItems:'center',justifyContent:'center',borderRadius:10,backgroundColor:'#8B2C20'},confirmDeleteText:{color:'#FFF',fontSize:12,fontWeight:'800'},cancel:{minHeight:44,minWidth:58,alignItems:'center',justifyContent:'center',borderRadius:10,backgroundColor:'#EEEDEA'},cancelText:{fontSize:12,fontWeight:'800',color:'#444'},clearButton:{alignSelf:'flex-start',minHeight:48,justifyContent:'center',marginTop:24,paddingHorizontal:16,borderRadius:12,borderWidth:1,borderColor:'#D8B8B2'},clearText:{fontSize:13,fontWeight:'800',color:'#8B2C20'},clearConfirm:{marginTop:24,alignSelf:'flex-start',flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:8},privacy:{marginTop:28,fontSize:12,lineHeight:19,color:'#888'},pressed:{opacity:.7},
