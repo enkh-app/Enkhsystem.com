@@ -27,7 +27,7 @@ function harness(options = {}) {
   }, module);
   const coordinator = module.exports.createWorkspaceSyncCoordinator({
     ...api, storage: () => ({ getItem: (key) => storageValues.get(key) || null, setItem: (key, value) => storageValues.set(key, value) }),
-    fingerprint: async (value) => `hash:${value}`, debounceMs: 10,
+    fingerprint: options.fingerprint || (async (value) => `hash:${value}`), debounceMs: 10,
     setTimer: (callback) => { const timer = { callback, cancelled: false }; timers.push(timer); return timer; },
     clearTimer: (timer) => { timer.cancelled = true; },
   });
@@ -134,6 +134,17 @@ test('manual recovery binds through the opaque account ID from the real auth res
   await h.runLatest();
   assert.equal(h.calls[0].expectedRevision, 2);
   assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 3 });
+});
+
+test('opaque account binding does not depend on browser Web Crypto', async () => {
+  const local = { ...empty(), sessions: [{ id: 'recovered' }] };
+  const h = harness({ email: '', accountId: 'opaque-account-fixture', revision: 2, remote: empty(), fingerprint: async () => { throw new Error('crypto unavailable'); }, syncImpl: async (workspace, expectedRevision) => ({ revision: expectedRevision + 1, workspace }) });
+  await h.coordinator.initialize(local);
+  await h.coordinator.bind(3, local);
+  h.coordinator.schedule({ ...local, sessions: [...local.sessions, { id: 'fresh-action' }] });
+  await h.runLatest();
+  assert.equal(h.calls[0].expectedRevision, 3);
+  assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 4 });
 });
 
 test('restored local backup remains pending and cannot auto-sync until explicit bind', async () => {
