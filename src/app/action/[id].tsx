@@ -19,6 +19,7 @@ import {
 } from '../../action-engine';
 import { runAction } from '../../api';
 import { addEntry, createSession, entriesFor, loadWorkspace, saveWorkspace } from '../../workspace-store';
+import { backgroundWorkspaceSync } from '../../workspace-sync';
 import { ComingSoonAction } from '../../components/coming-soon-action';
 
 export function generateStaticParams() {
@@ -110,6 +111,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
               structuredResult: data,
             });
             saveWorkspace(next);
+            backgroundWorkspaceSync.schedule(next);
           }
         }
       }

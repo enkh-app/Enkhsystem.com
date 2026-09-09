@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { searchWeb, SearchSource } from '../api';
 import { AppHeader } from '../components/app-header';
 import { addEntry, createSession, emptyWorkspace, entriesFor, loadWorkspace, saveWorkspace, WorkspaceState } from '../workspace-store';
+import { backgroundWorkspaceSync } from '../workspace-sync';
 
 export default function KnowledgeSearchScreen() {
   const params = useLocalSearchParams<{ q?: string; sessionId?: string }>();
@@ -61,6 +62,7 @@ export default function KnowledgeSearchScreen() {
       setAnswer(result.answer.trim()); setSources(safeSources);
       next = addEntry(next, { sessionId: activeId, role: 'assistant', type: 'search', content: result.answer.trim(), sources: safeSources });
       persist(next);
+      backgroundWorkspaceSync.schedule(next);
     } catch { setError('Вэб хайлт хийхэд алдаа гарлаа. Query history-д хадгалагдсан тул дахин оролдож болно.'); }
     finally { setLoading(false); }
   };

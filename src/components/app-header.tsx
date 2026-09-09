@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { WorkspaceSyncStatus } from './workspace-sync-status';
 
 type AppHeaderProps = { active?: 'home' | 'chat' | 'search' | 'workspace' | 'tools' | 'account' | 'status' };
 
@@ -35,7 +36,7 @@ export function AppHeader({ active }: AppHeaderProps) {
         <View accessibilityLabel="Үндсэн цэс" style={styles.primary}>{primary.map(link)}</View>
       </View>
       <View style={styles.utilityRow}>
-        <Text style={styles.localState}>LOCAL WORKSPACE</Text>
+        <WorkspaceSyncStatus />
         <View accessibilityLabel="Tools болон system цэс" style={styles.secondary}>{secondary.map(link)}</View>
       </View>
     </View>

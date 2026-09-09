@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/app-header';
 import { AdminApiError, getAuthState, getCloudWorkspace, importCloudWorkspace, syncCloudWorkspace } from '../api';
 import { clearWorkspace, deleteSession, loadWorkspace, replaceWorkspaceSafely, saveWorkspace, WorkspaceSession, WorkspaceState } from '../workspace-store';
+import { backgroundWorkspaceSync } from '../workspace-sync';
 
 export default function WorkspaceScreen() {
   const [state, setState] = useState<WorkspaceState>({ version: 1, sessions: [], entries: [] });
@@ -37,18 +38,18 @@ export default function WorkspaceScreen() {
 
   const importLocal = async () => {
     setCloudBusy(true); setCloudNotice('');
-    try { const saved = await importCloudWorkspace(state); setCloud({ authenticated: true, revision: saved.revision, workspace: saved.workspace as WorkspaceState }); setCloudNotice('Local workspace cloud-д аюулгүй import хийгдлээ.'); }
+    try { const saved = await importCloudWorkspace(state); setCloud({ authenticated: true, revision: saved.revision, workspace: saved.workspace as WorkspaceState }); await backgroundWorkspaceSync.bind(saved.revision, state); setCloudNotice('Local workspace cloud-д аюулгүй import хийгдлээ.'); }
     catch (error) { setCloudNotice(error instanceof AdminApiError && error.status === 409 ? 'Cloud workspace аль хэдийн байна. Эхлээд cloud copy-г ачаална уу.' : 'Import амжилтгүй. Local history өөрчлөгдөөгүй.'); }
     finally { setCloudBusy(false); }
   };
   const syncLocal = async () => {
     setCloudBusy(true); setCloudNotice('');
-    try { const saved = await syncCloudWorkspace(state, cloud.revision); setCloud({ authenticated: true, revision: saved.revision, workspace: saved.workspace as WorkspaceState }); setCloudNotice('Cloud workspace шинэчлэгдлээ.'); }
+    try { const expectedRevision = backgroundWorkspaceSync.getSnapshot().revision || cloud.revision; const saved = await syncCloudWorkspace(state, expectedRevision); setCloud({ authenticated: true, revision: saved.revision, workspace: saved.workspace as WorkspaceState }); await backgroundWorkspaceSync.bind(saved.revision, state); setCloudNotice('Cloud workspace шинэчлэгдлээ.'); }
     catch (error) { setCloudNotice(error instanceof AdminApiError && error.status === 409 ? 'Өөр төхөөрөмж дээр cloud workspace өөрчлөгдсөн. Cloud copy-г дахин ачаална уу.' : 'Sync амжилтгүй. Local history өөрчлөгдөөгүй.'); }
     finally { setCloudBusy(false); }
   };
   const loadCloud = () => {
-    if (cloud.workspace && replaceWorkspaceSafely(cloud.workspace)) { setState(cloud.workspace); setCloudNotice('Cloud copy ачааллаа. Өмнөх local copy backup хэлбэрээр хадгалагдсан.'); }
+    if (cloud.workspace && replaceWorkspaceSafely(cloud.workspace)) { setState(cloud.workspace); void backgroundWorkspaceSync.bind(cloud.revision, cloud.workspace); setCloudNotice('Cloud copy ачааллаа. Өмнөх local copy backup хэлбэрээр хадгалагдсан.'); }
     else setCloudNotice('Cloud copy ачаалж чадсангүй. Local history өөрчлөгдөөгүй.');
   };
 
@@ -58,8 +59,8 @@ export default function WorkspaceScreen() {
     else router.push({ pathname: '/tools/calculation', params: { sessionId: session.id } });
   };
 
-  const remove = (session: WorkspaceSession) => { const next = deleteSession(state, session.id); if (saveWorkspace(next)) { setState(next); setConfirming(''); } };
-  const clearAll = () => { if (clearWorkspace()) { setState({ version: 1, sessions: [], entries: [] }); setConfirming(''); } };
+  const remove = (session: WorkspaceSession) => { const next = deleteSession(state, session.id); if (saveWorkspace(next)) { setState(next); setConfirming(''); backgroundWorkspaceSync.schedule(next); } };
+  const clearAll = () => { const next: WorkspaceState = { version: 1, sessions: [], entries: [] }; if (clearWorkspace()) { setState(next); setConfirming(''); backgroundWorkspaceSync.schedule(next); } };
 
   return (
     <SafeAreaView style={styles.page}>

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ActionApiError, sendMessage } from '../api';
 import { AppHeader } from '../components/app-header';
 import { addEntry, contextFor, createSession, emptyWorkspace, entriesFor, loadWorkspace, saveWorkspace, WorkspaceEntry, WorkspaceState } from '../workspace-store';
+import { backgroundWorkspaceSync } from '../workspace-sync';
 
 export default function ChatScreen() {
   const params = useLocalSearchParams<{ prompt?: string; sessionId?: string }>();
@@ -64,6 +65,7 @@ export default function ChatScreen() {
       next = addEntry(next, { sessionId: activeId, role: 'assistant', type: 'message', content: answer.trim() });
       persist(next);
       setMessages(entriesFor(next, activeId));
+      backgroundWorkspaceSync.schedule(next);
     } catch (error) {
       setFailureKind(error instanceof ActionApiError && error.status >= 400 && error.status < 500 ? 'validation' : 'network');
       setFailedText(text);

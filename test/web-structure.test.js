@@ -9,7 +9,11 @@ test('canonical navigation is explicit and admin stays private', () => {
   const header = read('src/components/app-header.tsx');
   for (const route of ['/', '/chat', '/search', '/workspace', '/tools', '/account', '/status']) assert.ok(header.includes(`href: '${route}'`));
   assert.doesNotMatch(header, /admin\/data/);
-  assert.match(header, /LOCAL WORKSPACE/);
+  assert.match(header, /WorkspaceSyncStatus/);
+  const syncStatus = read('src/workspace-sync.ts');
+  for (const label of ['Local-д хадгалагдсан', 'Sync хийж байна…', 'Cloud-д хадгалагдсан ✓', 'Sync хүлээгдэж байна', 'Өөр төхөөрөмж дээр өөрчлөлт байна']) {
+    assert.match(syncStatus, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
 });
 
 test('legacy routes remain compatible without duplicate product surfaces', () => {
