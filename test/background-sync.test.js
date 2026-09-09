@@ -93,3 +93,11 @@ test('completed action paths save locally before scheduling background sync', ()
     assert.ok(save >= 0 && save < schedule, file);
   }
 });
+
+test('root lifecycle initializes sync before direct calculation and exposes its status', () => {
+  const layout = readFileSync(join(root, 'src/app/_layout.tsx'), 'utf8');
+  const calculation = readFileSync(join(root, 'src/app/action/[id].tsx'), 'utf8');
+  assert.match(layout, /WorkspaceSyncBootstrap/);
+  assert.match(calculation, /WorkspaceSyncStatus/);
+  assert.ok(calculation.indexOf('saveWorkspace(next)') < calculation.indexOf('backgroundWorkspaceSync.schedule(next)'));
+});

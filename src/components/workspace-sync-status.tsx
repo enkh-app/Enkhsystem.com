@@ -3,6 +3,11 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
 import { loadWorkspace } from '../workspace-store';
 
+export function WorkspaceSyncBootstrap() {
+  useEffect(() => { void backgroundWorkspaceSync.initialize(loadWorkspace().state); }, []);
+  return null;
+}
+
 export function WorkspaceSyncStatus() {
   const [state, setState] = useState<WorkspaceSyncSnapshot>(backgroundWorkspaceSync.getSnapshot());
   useEffect(() => {

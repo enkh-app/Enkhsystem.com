@@ -21,6 +21,7 @@ import { runAction } from '../../api';
 import { addEntry, createSession, entriesFor, loadWorkspace, saveWorkspace } from '../../workspace-store';
 import { backgroundWorkspaceSync } from '../../workspace-sync';
 import { ComingSoonAction } from '../../components/coming-soon-action';
+import { WorkspaceSyncStatus } from '../../components/workspace-sync-status';
 
 export function generateStaticParams() {
   return ACTIONS.map((action) => ({ id: action.id }));
@@ -168,6 +169,8 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
+
+        <WorkspaceSyncStatus />
 
         <View style={styles.header}>
           <Pressable
