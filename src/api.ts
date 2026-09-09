@@ -68,7 +68,7 @@ export class ActionApiError extends Error {
   constructor(public status: number) { super(`Action API error: ${status}`); }
 }
 
-export type AuthUser = { name: string; email: string; picture: string };
+export type AuthUser = { accountId?: string; name: string; email: string; picture: string };
 export type AuthState = { authenticated: boolean; admin: boolean; user?: AuthUser };
 
 export async function getAuthState(): Promise<AuthState> {

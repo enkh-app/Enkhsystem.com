@@ -12,10 +12,10 @@ const empty = () => ({ version: 1, sessions: [], entries: [] });
 
 function harness(options = {}) {
   const timers = []; const storageValues = new Map(); const calls = [];
-  let email = options.email === undefined ? 'account@example.test' : options.email; const picture = options.picture || ''; let fail = options.fail; let revision = options.revision || 3;
+  let email = options.email === undefined ? 'account@example.test' : options.email; const accountId = options.accountId || ''; let fail = options.fail; let revision = options.revision || 3;
   const api = {
     AdminApiError,
-    getAuthState: async () => (email || picture) ? ({ authenticated: true, admin: false, user: { email, picture } }) : ({ authenticated: false, admin: false }),
+    getAuthState: async () => (email || accountId) ? ({ authenticated: true, admin: false, user: { email, accountId } }) : ({ authenticated: false, admin: false }),
     getCloudWorkspace: async () => ({ revision, workspace: options.remote || empty() }),
     syncCloudWorkspace: async (workspace, expectedRevision) => { calls.push({ workspace, expectedRevision }); if (options.syncImpl) return options.syncImpl(workspace, expectedRevision, calls.length); if (fail) throw fail; revision += 1; return { revision, workspace }; },
   };
@@ -124,9 +124,9 @@ test('manual revision-two recovery enables the next calculation background PUT a
   assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 3 });
 });
 
-test('manual recovery binds through an existing stable Auth0 picture claim when email is absent', async () => {
+test('manual recovery binds through the opaque account ID from the real auth response shape', async () => {
   const local = { ...empty(), sessions: [{ id: 'local' }] };
-  const h = harness({ email: '', picture: 'https://identity.example/profile-id', revision: 1, remote: empty(), syncImpl: async (workspace, expectedRevision) => ({ revision: expectedRevision + 1, workspace }) });
+  const h = harness({ email: '', accountId: 'opaque-account-fixture', revision: 1, remote: empty(), syncImpl: async (workspace, expectedRevision) => ({ revision: expectedRevision + 1, workspace }) });
   await h.coordinator.initialize(local);
   assert.equal(h.coordinator.getSnapshot().phase, 'conflict');
   await h.coordinator.bind(2, local);

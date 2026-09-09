@@ -42,7 +42,7 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
   const writeMeta = () => { try { deps.storage()?.setItem(META_KEY, JSON.stringify({ ownerKey, revision: snapshot.revision })); } catch {} };
   const currentAccountKey = async () => {
     const auth = await deps.getAuthState();
-    const stableClaim = auth.user?.email || auth.user?.picture;
+    const stableClaim = auth.user?.accountId || auth.user?.email;
     if (!auth.authenticated || !stableClaim) return '';
     return deps.fingerprint(stableClaim);
   };
