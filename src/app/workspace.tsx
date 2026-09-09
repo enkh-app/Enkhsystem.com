@@ -4,12 +4,16 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../components/app-header';
-import { clearWorkspace, deleteSession, loadWorkspace, saveWorkspace, WorkspaceSession, WorkspaceState } from '../workspace-store';
+import { AdminApiError, getAuthState, getCloudWorkspace, importCloudWorkspace, syncCloudWorkspace } from '../api';
+import { clearWorkspace, deleteSession, loadWorkspace, replaceWorkspaceSafely, saveWorkspace, WorkspaceSession, WorkspaceState } from '../workspace-store';
 
 export default function WorkspaceScreen() {
   const [state, setState] = useState<WorkspaceState>({ version: 1, sessions: [], entries: [] });
   const [issue, setIssue] = useState<'unavailable' | 'corrupt' | undefined>();
   const [confirming, setConfirming] = useState('');
+  const [cloud, setCloud] = useState<{ authenticated: boolean; revision: number; workspace: WorkspaceState | null }>({ authenticated: false, revision: 0, workspace: null });
+  const [cloudBusy, setCloudBusy] = useState(false);
+  const [cloudNotice, setCloudNotice] = useState('');
 
   const reload = useCallback(() => {
     const loaded = loadWorkspace();
@@ -17,6 +21,36 @@ export default function WorkspaceScreen() {
     setIssue(loaded.issue);
   }, []);
   useFocusEffect(reload);
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const auth = await getAuthState();
+        if (!auth.authenticated || !active) return;
+        const remote = await getCloudWorkspace();
+        if (active) setCloud({ authenticated: true, revision: remote.revision, workspace: remote.workspace as WorkspaceState | null });
+      } catch { if (active) setCloudNotice('Cloud workspace төлөвийг шалгаж чадсангүй. Local history хэвээр байна.'); }
+    })();
+    return () => { active = false; };
+  }, []));
+
+  const importLocal = async () => {
+    setCloudBusy(true); setCloudNotice('');
+    try { const saved = await importCloudWorkspace(state); setCloud({ authenticated: true, revision: saved.revision, workspace: saved.workspace as WorkspaceState }); setCloudNotice('Local workspace cloud-д аюулгүй import хийгдлээ.'); }
+    catch (error) { setCloudNotice(error instanceof AdminApiError && error.status === 409 ? 'Cloud workspace аль хэдийн байна. Эхлээд cloud copy-г ачаална уу.' : 'Import амжилтгүй. Local history өөрчлөгдөөгүй.'); }
+    finally { setCloudBusy(false); }
+  };
+  const syncLocal = async () => {
+    setCloudBusy(true); setCloudNotice('');
+    try { const saved = await syncCloudWorkspace(state, cloud.revision); setCloud({ authenticated: true, revision: saved.revision, workspace: saved.workspace as WorkspaceState }); setCloudNotice('Cloud workspace шинэчлэгдлээ.'); }
+    catch (error) { setCloudNotice(error instanceof AdminApiError && error.status === 409 ? 'Өөр төхөөрөмж дээр cloud workspace өөрчлөгдсөн. Cloud copy-г дахин ачаална уу.' : 'Sync амжилтгүй. Local history өөрчлөгдөөгүй.'); }
+    finally { setCloudBusy(false); }
+  };
+  const loadCloud = () => {
+    if (cloud.workspace && replaceWorkspaceSafely(cloud.workspace)) { setState(cloud.workspace); setCloudNotice('Cloud copy ачааллаа. Өмнөх local copy backup хэлбэрээр хадгалагдсан.'); }
+    else setCloudNotice('Cloud copy ачаалж чадсангүй. Local history өөрчлөгдөөгүй.');
+  };
 
   const open = (session: WorkspaceSession) => {
     if (session.type === 'chat') router.push({ pathname: '/chat', params: { sessionId: session.id } });
@@ -38,6 +72,9 @@ export default function WorkspaceScreen() {
 
         {issue && <View style={styles.notice}><Text style={styles.noticeTitle}>{issue === 'corrupt' ? 'History өгөгдөл уншигдсангүй' : 'Browser storage ашиглах боломжгүй'}</Text><Text style={styles.noticeText}>ENKH хоосон workspace-ээр аюулгүй үргэлжилж байна.</Text></View>}
 
+        {cloud.authenticated && <View style={styles.cloudCard}><Text style={styles.noticeTitle}>Cloud workspace</Text><Text style={styles.noticeText}>{cloud.workspace ? `Revision ${cloud.revision}. Sync нь таны товчлуур дарахад л хийгдэнэ.` : 'Cloud copy хоосон. Local history-г explicit import хийж болно.'}</Text><View style={styles.cloudActions}>{!cloud.workspace ? <Pressable disabled={cloudBusy} accessibilityRole="button" onPress={() => void importLocal()} style={styles.newButton}><Text style={styles.newButtonText}>Local history import</Text></Pressable> : <><Pressable disabled={cloudBusy} accessibilityRole="button" onPress={() => void syncLocal()} style={styles.newButton}><Text style={styles.newButtonText}>Cloud руу sync</Text></Pressable><Pressable disabled={cloudBusy} accessibilityRole="button" onPress={loadCloud} style={styles.cancel}><Text style={styles.cancelText}>Cloud copy ачаалах</Text></Pressable></>}</View></View>}
+        {!!cloudNotice && <Text accessibilityLiveRegion="polite" style={styles.warning}>{cloudNotice}</Text>}
+
         {!state.sessions.length ? (
           <View style={styles.empty}><Text style={styles.emptyTitle}>Одоогоор history алга</Text><Text style={styles.emptyText}>Chat, Search эсвэл Calculation ажиллуулахад session энд автоматаар хадгалагдана.</Text></View>
         ) : (
@@ -54,7 +91,7 @@ export default function WorkspaceScreen() {
         )}
 
         {!!state.sessions.length && (confirming === 'all' ? <View style={styles.clearConfirm}><Text style={styles.confirmText}>Бүх local history-г устгах уу?</Text><Pressable accessibilityRole="button" onPress={clearAll} style={styles.confirmDelete}><Text style={styles.confirmDeleteText}>Бүгдийг устгах</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setConfirming('')} style={styles.cancel}><Text style={styles.cancelText}>Болих</Text></Pressable></View> : <Pressable accessibilityRole="button" accessibilityLabel="Бүх local history цэвэрлэх" onPress={() => setConfirming('all')} style={styles.clearButton}><Text style={styles.clearText}>Бүх history-г цэвэрлэх</Text></Pressable>)}
-        <Text style={styles.privacy}>Privacy: өгөгдөл зөвхөн энэ browser-ийн localStorage-д хадгалагдана. Account эсвэл server sync одоогоор байхгүй.</Text>
+        <Text style={styles.privacy}>Privacy: local history browser-д хадгалагдана. Нэвтэрсэн үед cloud import/sync зөвхөн таны explicit үйлдлээр хийгдэнэ.</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -65,6 +102,7 @@ const styles = StyleSheet.create({
   headingRow:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:16},headingText:{flex:1,minWidth:240},title:{fontSize:40,fontWeight:'900',color:'#171717'},subtitle:{marginTop:8,fontSize:15,lineHeight:22,color:'#686868'},
   newButton:{minHeight:48,justifyContent:'center',paddingHorizontal:18,borderRadius:14,backgroundColor:'#171717'},newButtonText:{color:'#FFF',fontWeight:'800'},
   notice:{marginTop:24,padding:18,borderRadius:16,backgroundColor:'#FFF4E3',borderWidth:1,borderColor:'#E9C98B'},noticeTitle:{fontWeight:'800',color:'#6F4A13'},noticeText:{marginTop:5,color:'#765A31'},
+  cloudCard:{marginTop:24,padding:18,borderRadius:16,backgroundColor:'#FFF',borderWidth:1,borderColor:'#D6E5D8'},cloudActions:{marginTop:14,flexDirection:'row',flexWrap:'wrap',gap:8},warning:{marginTop:12,padding:10,borderRadius:10,backgroundColor:'#FFF4E3',color:'#6F4A13',fontSize:12},
   empty:{marginTop:28,minHeight:240,alignItems:'center',justifyContent:'center',padding:24,borderRadius:20,backgroundColor:'#FFF',borderWidth:1,borderColor:'#E1E1DD'},emptyTitle:{fontSize:20,fontWeight:'900',color:'#171717'},emptyText:{marginTop:9,maxWidth:480,textAlign:'center',fontSize:15,lineHeight:23,color:'#777'},
   list:{marginTop:28,gap:10},session:{minHeight:106,flexDirection:'row',alignItems:'center',borderRadius:18,backgroundColor:'#FFF',borderWidth:1,borderColor:'#E1E1DD'},openArea:{flex:1,minHeight:104,justifyContent:'center',padding:18},kind:{fontSize:10,letterSpacing:1.3,fontWeight:'900',color:'#777'},sessionTitle:{marginTop:6,fontSize:17,lineHeight:23,fontWeight:'800',color:'#171717'},date:{marginTop:5,fontSize:12,color:'#888'},
   deleteButton:{minWidth:76,minHeight:48,alignItems:'center',justifyContent:'center',marginRight:12,borderRadius:12,backgroundColor:'#F3F1EE'},deleteText:{fontSize:13,fontWeight:'800',color:'#8B2C20'},confirm:{marginRight:10,alignItems:'center',gap:4},confirmText:{fontSize:12,fontWeight:'800',color:'#6A3129'},confirmDelete:{minHeight:44,minWidth:58,alignItems:'center',justifyContent:'center',borderRadius:10,backgroundColor:'#8B2C20'},confirmDeleteText:{color:'#FFF',fontSize:12,fontWeight:'800'},cancel:{minHeight:44,minWidth:58,alignItems:'center',justifyContent:'center',borderRadius:10,backgroundColor:'#EEEDEA'},cancelText:{fontSize:12,fontWeight:'800',color:'#444'},clearButton:{alignSelf:'flex-start',minHeight:48,justifyContent:'center',marginTop:24,paddingHorizontal:16,borderRadius:12,borderWidth:1,borderColor:'#D8B8B2'},clearText:{fontSize:13,fontWeight:'800',color:'#8B2C20'},clearConfirm:{marginTop:24,alignSelf:'flex-start',flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:8},privacy:{marginTop:28,fontSize:12,lineHeight:19,color:'#888'},pressed:{opacity:.7},

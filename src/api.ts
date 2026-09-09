@@ -68,6 +68,42 @@ export class ActionApiError extends Error {
   constructor(public status: number) { super(`Action API error: ${status}`); }
 }
 
+export type AuthUser = { name: string; email: string; picture: string };
+export type AuthState = { authenticated: boolean; admin: boolean; user?: AuthUser };
+
+export async function getAuthState(): Promise<AuthState> {
+  const response = await fetch(`${ENKH_API_URL}/auth/me`, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
+  if (response.status === 401) return { authenticated: false, admin: false };
+  if (!response.ok) throw new Error(`Auth API error: ${response.status}`);
+  const payload = await response.json();
+  return { authenticated: payload?.authenticated === true, admin: payload?.admin === true, user: payload?.user };
+}
+
+export const authLoginUrl = `${ENKH_API_URL}/auth/login?returnTo=${encodeURIComponent('/auth/account-complete')}`;
+export const authLogoutUrl = `${ENKH_API_URL}/auth/logout?returnTo=${encodeURIComponent('https://enkhsystems.com')}`;
+
+export async function getCloudWorkspace(): Promise<{ revision: number; workspace: unknown | null }> {
+  const response = await fetch(`${ENKH_API_URL}/api/workspace`, { credentials: 'include', headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new AdminApiError(response.status);
+  const payload = await response.json();
+  return { revision: Number(payload.revision || 0), workspace: payload.workspace ?? null };
+}
+
+export async function importCloudWorkspace(workspace: unknown) {
+  return writeCloudWorkspace('/api/workspace/import', 'POST', { workspace });
+}
+
+export async function syncCloudWorkspace(workspace: unknown, expectedRevision: number) {
+  return writeCloudWorkspace('/api/workspace', 'PUT', { workspace, expectedRevision });
+}
+
+async function writeCloudWorkspace(path: string, method: 'POST' | 'PUT', body: unknown): Promise<{ revision: number; workspace: unknown }> {
+  const response = await fetch(`${ENKH_API_URL}${path}`, { method, credentials: 'include', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!response.ok) throw new AdminApiError(response.status);
+  const payload = await response.json();
+  return { revision: Number(payload.revision), workspace: payload.workspace };
+}
+
 export async function getSystemHealth(): Promise<{ healthy: boolean }> {
   const response = await fetch(`${ENKH_API_URL}/health`, { method: 'GET', headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`Health API error: ${response.status}`);
@@ -88,6 +124,28 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
 }
 
 export const adminLoginUrl = `${ENKH_API_URL}/auth/login?returnTo=${encodeURIComponent('/auth/complete')}`;
+
+async function pageAdminRequest(path: string, options: RequestInit): Promise<{ postId: string }> {
+  const response = await fetch(`${ENKH_API_URL}/api/admin/page${path}`, {
+    ...options,
+    credentials: 'include',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...options.headers },
+  });
+  if (!response.ok) throw new AdminApiError(response.status);
+  const payload = await response.json();
+  if (!payload?.success || typeof payload.postId !== 'string') throw new AdminApiError(502);
+  return { postId: payload.postId };
+}
+
+export function createPagePost(message: string) {
+  return pageAdminRequest('/posts', { method: 'POST', body: JSON.stringify({ message }) });
+}
+export function editPagePost(postId: string, message: string) {
+  return pageAdminRequest(`/posts/${encodeURIComponent(postId)}`, { method: 'PATCH', body: JSON.stringify({ message }) });
+}
+export function deletePagePost(postId: string) {
+  return pageAdminRequest(`/posts/${encodeURIComponent(postId)}`, { method: 'DELETE' });
+}
 
 async function requestKnowledge(input: string): Promise<ActionResponse> {
   return runAction('knowledge', input);

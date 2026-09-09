@@ -2,6 +2,7 @@ import type { ChatMessage, SearchSource } from './api';
 
 export const WORKSPACE_STORAGE_KEY = 'enkh.workspace.v1';
 export const WORKSPACE_SCHEMA_VERSION = 1;
+export const WORKSPACE_BACKUP_KEY = 'enkh.workspace.backup.v1';
 export const MAX_CONTEXT_MESSAGES = 12;
 export const MAX_CONTEXT_CHARS = 12000;
 
@@ -128,4 +129,16 @@ export function clearWorkspace(storage?: StorageLike): boolean {
   const target = storageOrNull(storage);
   if (!target) return false;
   try { target.removeItem(WORKSPACE_STORAGE_KEY); return true; } catch { return false; }
+}
+
+export function replaceWorkspaceSafely(next: WorkspaceState, storage?: StorageLike): boolean {
+  if (!validState(next)) return false;
+  const target = storageOrNull(storage);
+  if (!target) return false;
+  try {
+    const current = target.getItem(WORKSPACE_STORAGE_KEY);
+    if (current) target.setItem(WORKSPACE_BACKUP_KEY, current);
+    target.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(next));
+    return true;
+  } catch { return false; }
 }
