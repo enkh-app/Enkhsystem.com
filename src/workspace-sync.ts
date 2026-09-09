@@ -105,7 +105,7 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
   };
 
   const bind = async (revision: number, workspace: WorkspaceState) => {
-    const key = await currentAccountKey();
+    const key = ownerKey || await currentAccountKey();
     if (!key) return;
     ownerKey = key; enabled = true; initialized = true; latest = null;
     publish('synced', revision); writeMeta();

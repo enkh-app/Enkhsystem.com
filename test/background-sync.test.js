@@ -15,7 +15,7 @@ function harness(options = {}) {
   let email = options.email === undefined ? 'account@example.test' : options.email; const accountId = options.accountId || ''; let fail = options.fail; let revision = options.revision || 3;
   const api = {
     AdminApiError,
-    getAuthState: async () => (email || accountId) ? ({ authenticated: true, admin: false, user: { email, accountId } }) : ({ authenticated: false, admin: false }),
+    getAuthState: options.getAuthState || (async () => (email || accountId) ? ({ authenticated: true, admin: false, user: { email, accountId } }) : ({ authenticated: false, admin: false })),
     getCloudWorkspace: async () => ({ revision, workspace: options.remote || empty() }),
     syncCloudWorkspace: async (workspace, expectedRevision) => { calls.push({ workspace, expectedRevision }); if (options.syncImpl) return options.syncImpl(workspace, expectedRevision, calls.length); if (fail) throw fail; revision += 1; return { revision, workspace }; },
   };
@@ -145,6 +145,26 @@ test('opaque account binding does not depend on browser Web Crypto', async () =>
   await h.runLatest();
   assert.equal(h.calls[0].expectedRevision, 3);
   assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 4 });
+});
+
+test('manual bind revision four survives route navigation without a redundant auth lookup', async () => {
+  let authCalls = 0;
+  const getAuthState = async () => {
+    authCalls += 1;
+    if (authCalls > 2) throw new Error('redundant auth lookup');
+    return { authenticated: true, admin: false, user: { accountId: 'opaque-account-fixture', email: '' } };
+  };
+  const baseline = { ...empty(), sessions: [{ id: 'manual-baseline' }] };
+  const h = harness({ getAuthState, revision: 3, remote: empty(), syncImpl: async (workspace, expectedRevision) => ({ revision: expectedRevision + 1, workspace }) });
+  await h.coordinator.initialize(baseline);
+  await h.coordinator.bind(4, baseline);
+  const afterNavigation = { ...baseline, sessions: [...baseline.sessions, { id: 'calculation-after-navigation' }] };
+  h.coordinator.schedule(afterNavigation);
+  await h.runLatest();
+  assert.equal(h.coordinator.getSnapshot().revision, 5);
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].expectedRevision, 4);
+  assert.equal(authCalls, 2);
 });
 
 test('restored local backup remains pending and cannot auto-sync until explicit bind', async () => {
