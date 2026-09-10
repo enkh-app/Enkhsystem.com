@@ -23,6 +23,15 @@ test('editable text round-trips headings lists tables and legacy plain text', ()
   assert.ok(model.documentFromResult({ content: 'Legacy plain draft', documentType: 'memo' }).sections.length);
 });
 
+test('canonical editable serialization preserves contiguous list and table syntax through edit reparse', () => {
+  const original = model.validateDocumentModel({ version: 1, title: 'Тайлан', documentType: 'report', date: '2026-09-10', metadata: [], sections: [{ heading: 'Үр дүн', level: 1, blocks: [{ type: 'list', style: 'numbered', items: ['Нэг', 'Хоёр'] }, { type: 'table', columns: ['Нэр', 'Төлөв'], rows: [['DOCX', 'PASS']] }] }] });
+  const editable = model.modelToEditableText(original);
+  assert.match(editable, /1\. Нэг\n2\. Хоёр/); assert.match(editable, /\| Нэр \| Төлөв \|\n\| --- \| --- \|\n\| DOCX \| PASS \|/);
+  const reparsed = model.documentAfterEdit(editable.replace('PASS', 'Зассан'), original);
+  assert.equal(reparsed.sections[0].blocks.find((block) => block.type === 'list').items.length, 2);
+  assert.equal(reparsed.sections[0].blocks.find((block) => block.type === 'table').rows[0][1], 'Зассан');
+});
+
 test('editing updates canonical body while preserving safe presentation metadata', () => {
   const original = model.validateDocumentModel({ title: 'Тайлан', documentType: 'report', date: '2026-09-10', metadata: [{ label: 'Төлөв', value: 'Ноорог' }], sections: [{ heading: 'Хуучин', level: 1, blocks: [{ type: 'paragraph', text: 'Өмнөх' }] }], footer: { text: 'Footer' } });
   const edited = model.documentAfterEdit('# Тайлан\n\n# Шинэ\n\nЗассан', original);

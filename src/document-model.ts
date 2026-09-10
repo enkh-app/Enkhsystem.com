@@ -108,18 +108,19 @@ export function documentAfterEdit(content: string, existing: StructuredDocument 
 }
 
 export function modelToEditableText(document: StructuredDocument): string {
-  const lines: string[] = [`# ${document.title}`];
-  if (document.subtitle) lines.push(document.subtitle);
+  const parts: string[] = [`# ${document.title}`];
+  if (document.subtitle) parts.push(document.subtitle);
   document.sections.forEach((section) => {
-    lines.push(`${'#'.repeat(section.level)} ${section.heading}`);
+    const sectionParts: string[] = [`${'#'.repeat(section.level)} ${section.heading}`];
     section.blocks.forEach((block) => {
-      if (block.type === 'paragraph') lines.push(block.text);
-      else if (block.type === 'heading') lines.push(`${'#'.repeat(block.level)} ${block.text}`);
-      else if (block.type === 'list') block.items.forEach((item, index) => lines.push(block.style === 'numbered' ? `${index + 1}. ${item}` : `- ${item}`));
-      else { lines.push(`| ${block.columns.join(' | ')} |`, `| ${block.columns.map(() => '---').join(' | ')} |`); block.rows.forEach((row) => lines.push(`| ${row.join(' | ')} |`)); }
+      if (block.type === 'paragraph') sectionParts.push(block.text);
+      else if (block.type === 'heading') sectionParts.push(`${'#'.repeat(block.level)} ${block.text}`);
+      else if (block.type === 'list') sectionParts.push(block.items.map((item, index) => block.style === 'numbered' ? `${index + 1}. ${item}` : `- ${item}`).join('\n'));
+      else sectionParts.push([`| ${block.columns.join(' | ')} |`, `| ${block.columns.map(() => '---').join(' | ')} |`, ...block.rows.map((row) => `| ${row.join(' | ')} |`)].join('\n'));
     });
+    parts.push(sectionParts.filter(Boolean).join('\n\n'));
   });
-  return lines.filter(Boolean).join('\n\n');
+  return parts.filter(Boolean).join('\n\n');
 }
 
 export function documentFromResult(result: unknown, content = ''): StructuredDocument | null {
