@@ -26,7 +26,7 @@ const fingerprint = async (email: string) => {
 };
 
 export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> = {}) {
-  const deps: Dependencies = { getAuthState, getCloudWorkspace, syncCloudWorkspace, storage: browserStorage, fingerprint, setTimer: setTimeout, clearTimer: clearTimeout, debounceMs: 700, ...overrides };
+  const deps: Dependencies = { getAuthState, getCloudWorkspace, syncCloudWorkspace, storage: browserStorage, fingerprint, setTimer: (callback, delay) => setTimeout(callback, delay), clearTimer: (pendingTimer) => clearTimeout(pendingTimer), debounceMs: 700, ...overrides };
   let snapshot: WorkspaceSyncSnapshot = { phase: 'local', revision: 0 };
   let initialized = false;
   let initializing: Promise<void> | null = null;

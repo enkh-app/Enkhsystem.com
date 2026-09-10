@@ -6,14 +6,12 @@ import { AppHeader } from '../components/app-header';
 
 const available = [
   { title: 'Тооцоолол', description: 'Тоон илэрхийлэл, хувь болон хэмжих нэгжтэй тооцоо.', route: '/tools/calculation', label: 'Ажиллуулах' },
-  { title: 'AI мэдлэг', description: 'Монгол асуултад ENKH AI-аас шууд хариулт авах.', route: '/chat', label: 'Асуух' },
-  { title: 'Вэб хайлт', description: 'Бодит вэб хайлт, нэгтгэсэн хариу, эх сурвалж.', route: '/search', label: 'Хайх' },
   { title: 'Текст боловсруулах', description: 'Засах, богиносгох, дэлгэрүүлэх, хураангуйлах, орчуулах.', route: '/action/text', label: 'Боловсруулах' },
   { title: 'Мессеж бэлтгэх', description: 'Өнгө аястай editable draft бэлтгэнэ; автоматаар илгээхгүй.', route: '/action-message', label: 'Ноорог бэлтгэх' },
   { title: 'Баримт бичиг', description: 'Бүтэцтэй editable баримтын draft бэлтгэнэ.', route: '/action-document', label: 'Ноорог бэлтгэх' },
 ] as const;
 
-const upcoming = ['Сануулагч — durable scheduler/notification шаардлагатай'];
+const upcoming = ['Сануулга'];
 
 export default function ActionsScreen() {
   return (
@@ -21,7 +19,9 @@ export default function ActionsScreen() {
       <AppHeader active="tools" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>ENKH Tools</Text>
-        <Text style={styles.subtitle}>Бодитоор ажиллаж байгаа хэрэгслүүд ба compatibility action-ууд.</Text>
+        <Text style={styles.subtitle}>Таны ажлыг хурдан бэлтгэх бодитоор ажилладаг хэрэгслүүд.</Text>
+
+        <Text accessibilityRole="header" style={styles.groupTitle}>Ажиллаж байгаа</Text>
 
         <View style={styles.list}>
           {available.map((action) => (
@@ -36,9 +36,9 @@ export default function ActionsScreen() {
           ))}
         </View>
 
-        <Text accessibilityRole="header" style={styles.upcomingTitle}>Дараагийн боломжууд</Text>
+        <Text accessibilityRole="header" style={styles.upcomingTitle}>Тун удахгүй</Text>
         <View style={styles.upcomingList}>
-          {upcoming.map((item) => <View key={item} style={styles.upcomingCard}><Text style={styles.upcomingName}>{item}</Text><Text style={styles.upcomingBadge}>Тун удахгүй</Text></View>)}
+          {upcoming.map((item) => <View key={item} style={styles.upcomingCard}><Text style={styles.upcomingName}>{item}</Text><Text style={styles.upcomingBadge}>Найдвартай сануулга, мэдэгдлийн үйлчилгээ бэлэн болмогц идэвхжинэ.</Text></View>)}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -50,7 +50,8 @@ const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: 960, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 42, paddingBottom: 56 },
   title: { fontSize: 40, lineHeight: 48, fontWeight: '900', color: '#102A43' },
   subtitle: { marginTop: 10, fontSize: 16, color: '#627D98' },
-  list: { marginTop: 30, gap: 12 },
+  groupTitle: { marginTop: 30, fontSize: 22, fontWeight: '900', color: '#102A43' },
+  list: { marginTop: 14, gap: 12 },
   card: { minHeight: 150, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 20, padding: 22, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DFEAF7' },
   info: { flex: 1, minWidth: 220 },
   liveBadge: { alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, backgroundColor: '#E7F6EB' },

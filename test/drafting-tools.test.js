@@ -23,7 +23,7 @@ test('drafting UI has validation, loading, retry, editable copy and safe message
 test('tools advertise only real drafting capabilities and reminder remains honest', () => {
   const tools = read('src/app/actions.tsx');
   for (const label of ['Текст боловсруулах','Мессеж бэлтгэх','Баримт бичиг']) assert.match(tools, new RegExp(label));
-  assert.match(tools, /Сануулагч — durable scheduler\/notification шаардлагатай/);
+  assert.match(tools, /Сануулга/); assert.match(tools, /Тун удахгүй/);
   assert.match(read('src/app/action-reminder.tsx'), /durable scheduler/);
   assert.doesNotMatch(read('src/action-engine.ts'), /Мессеж илгээх/);
 });

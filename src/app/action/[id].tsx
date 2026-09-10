@@ -184,7 +184,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
 
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>
-              ACTION
+              ТООЦООЛОЛ
             </Text>
 
             <Text style={styles.headerStatus}>

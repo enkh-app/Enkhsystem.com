@@ -10,7 +10,7 @@ type AppHeaderProps = { active?: ActiveRoute };
 const primary = [
   { id: 'home', label: 'Нүүр', icon: '⌂', href: '/' },
   { id: 'chat', label: 'Chat', icon: '✦', href: '/chat' },
-  { id: 'search', label: 'Search', icon: '⌕', href: '/search' },
+  { id: 'search', label: 'Хайлт', icon: '⌕', href: '/search' },
   { id: 'workspace', label: 'Workspace', icon: '▣', href: '/workspace' },
   { id: 'tools', label: 'Tools', icon: '◇', href: '/tools' },
 ] as const;
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   utility: { gap: 4 },
   language: { minHeight: 38, textAlignVertical: 'center', paddingHorizontal: 12, color: '#627D98', fontSize: 13, fontWeight: '800' },
   mobileControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: EnkhColors.primary },
+  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: EnkhColors.primary },
   avatarText: { color: '#FFFFFF', fontWeight: '900' },
   pressed: { opacity: 0.68 },
 });

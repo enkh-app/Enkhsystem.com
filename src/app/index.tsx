@@ -7,7 +7,7 @@ import { getAuthState } from '../api';
 import { AppHeader } from '../components/app-header';
 import { EnkhColors, EnkhLayout } from '../constants/design';
 import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
-import { loadWorkspace, WorkspaceSession } from '../workspace-store';
+import { loadWorkspace, workspaceSessionLabel, WorkspaceSession, WorkspaceState } from '../workspace-store';
 
 type Mode = 'chat' | 'search';
 const hero = require('../../assets/images/enkh-mountain-hero.png');
@@ -17,11 +17,14 @@ export default function HomeScreen() {
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<Mode>('chat');
   const [recent, setRecent] = useState<WorkspaceSession[]>([]);
+  const [workspace, setWorkspace] = useState<WorkspaceState>({ version: 1, sessions: [], entries: [] });
   const [firstName, setFirstName] = useState('');
   const [sync, setSync] = useState<WorkspaceSyncSnapshot>(backgroundWorkspaceSync.getSnapshot());
 
   useEffect(() => {
-    setRecent(loadWorkspace().state.sessions.slice(0, 4));
+    const loaded = loadWorkspace().state;
+    setWorkspace(loaded);
+    setRecent(loaded.sessions.slice(0, 4));
     void getAuthState().then((auth) => setFirstName(auth.authenticated ? (auth.user?.name || '').trim().split(/\s+/)[0] : '')).catch(() => {});
     const unsubscribe = backgroundWorkspaceSync.subscribe(() => setSync(backgroundWorkspaceSync.getSnapshot()));
     return () => { unsubscribe(); };
@@ -57,8 +60,7 @@ export default function HomeScreen() {
         <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Юу хийх вэ?</Text><Text style={styles.sectionCaption}>Таны ENKH workspace</Text></View>
         <View style={styles.cards}>
           <Feature icon="✦" title="Chat" description="Ойлгомжтой, үргэлжилсэн яриа" onPress={() => router.push('/chat')} />
-          <Feature icon="⌕" title="Search" description="Эх сурвалжтай бодит хайлт" onPress={() => router.push('/search')} />
-          <Feature icon="∑" title="Calculation" description="Хэмжээ, хувь, тооцоолол" onPress={() => router.push('/tools/calculation')} />
+          <Feature icon="⌕" title="Хайлт" description="Эх сурвалжтай бодит хайлт" onPress={() => router.push('/search')} />
           <Feature icon="▣" title="Workspace" description="Таны хадгалсан ажлууд" onPress={() => router.push('/workspace')} />
           <Feature icon="◇" title="Tools" description="Бодитоор ажиллах хэрэгслүүд" onPress={() => router.push('/tools')} />
         </View>
@@ -66,12 +68,12 @@ export default function HomeScreen() {
         <View style={styles.dashboardRow}>
           <View style={styles.recentPanel}>
             <View style={styles.panelHeading}><View><Text style={styles.panelEyebrow}>RECENT WORK</Text><Text style={styles.panelTitle}>Сүүлийн ажлууд</Text></View><Pressable accessibilityRole="link" onPress={() => router.push('/workspace')}><Text style={styles.link}>Бүгдийг харах →</Text></Pressable></View>
-            {recent.length ? recent.map((session) => <Pressable key={session.id} accessibilityRole="link" onPress={() => router.push('/workspace')} style={styles.recentItem}><View style={styles.recentIcon}><Text style={styles.recentIconText}>{session.type === 'chat' ? '✦' : session.type === 'search' ? '⌕' : '∑'}</Text></View><View style={styles.recentText}><Text numberOfLines={1} style={styles.recentTitle}>{session.title}</Text><Text style={styles.recentMeta}>{session.type.toUpperCase()} · {new Date(session.updatedAt).toLocaleDateString()}</Text></View></Pressable>) : <View style={styles.empty}><Text style={styles.emptyTitle}>Workspace хоосон байна</Text><Text style={styles.emptyText}>Chat, Search эсвэл Calculation ашиглахад бодит history энд харагдана.</Text></View>}
+            {recent.length ? recent.map((session) => <Pressable key={session.id} accessibilityRole="link" onPress={() => router.push('/workspace')} style={styles.recentItem}><View style={styles.recentIcon}><Text style={styles.recentIconText}>{session.type === 'chat' ? '✦' : session.type === 'search' ? '⌕' : '◇'}</Text></View><View style={styles.recentText}><Text numberOfLines={1} style={styles.recentTitle}>{session.title}</Text><Text style={styles.recentMeta}>{workspaceSessionLabel(workspace, session)} · {new Date(session.updatedAt).toLocaleDateString()}</Text></View></Pressable>) : <View style={styles.empty}><Text style={styles.emptyTitle}>Workspace хоосон байна</Text><Text style={styles.emptyText}>ENKH ашиглахад таны бодит ажлууд энд харагдана.</Text></View>}
           </View>
 
           <View style={styles.sideColumn}>
             <View style={styles.summaryCard}><Text style={styles.panelEyebrow}>WORKSPACE</Text><Text style={styles.summaryTitle}>{workspaceSyncLabel(sync.phase)}</Text><Text style={styles.summaryText}>{sync.revision > 0 ? 'Cloud workspace-тэй холбогдсон.' : 'Local workspace бэлэн.'}</Text><Pressable accessibilityRole="link" onPress={() => router.push('/workspace')}><Text style={styles.link}>Workspace нээх →</Text></Pressable></View>
-            <View style={styles.quickCard}><Text style={styles.panelEyebrow}>QUICK TOOLS</Text><Pressable accessibilityRole="link" onPress={() => router.push('/tools/calculation')} style={styles.quickLink}><Text style={styles.quickIcon}>∑</Text><Text style={styles.quickText}>Calculation</Text><Text style={styles.quickArrow}>→</Text></Pressable><Pressable accessibilityRole="link" onPress={() => router.push('/search')} style={styles.quickLink}><Text style={styles.quickIcon}>⌕</Text><Text style={styles.quickText}>Source Search</Text><Text style={styles.quickArrow}>→</Text></Pressable></View>
+            <View style={styles.quickCard}><Text style={styles.panelEyebrow}>QUICK TOOLS</Text><QuickTool icon="T" label="Текст боловсруулах" onPress={() => router.push({ pathname: '/action/[id]', params: { id: 'text' } })}/><QuickTool icon="✉" label="Мессеж бэлтгэх" onPress={() => router.push('/action-message')}/><QuickTool icon="▤" label="Баримт бичиг" onPress={() => router.push('/action-document')}/><QuickTool icon="∑" label="Тооцоолол" onPress={() => router.push('/tools/calculation')}/></View>
           </View>
         </View>
       </ScrollView>
@@ -87,6 +89,10 @@ function Feature({ icon, title, description, onPress }: { icon: string; title: s
   return <Pressable accessibilityRole="link" onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}><View style={styles.cardIcon}><Text style={styles.cardIconText}>{icon}</Text></View><Text style={styles.cardTitle}>{title}</Text><Text style={styles.cardDescription}>{description}</Text><Text style={styles.cardAction}>Нээх →</Text></Pressable>;
 }
 
+function QuickTool({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+  return <Pressable accessibilityRole="link" onPress={onPress} style={styles.quickLink}><Text style={styles.quickIcon}>{icon}</Text><Text style={styles.quickText}>{label}</Text><Text style={styles.quickArrow}>→</Text></Pressable>;
+}
+
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: EnkhColors.canvas },
   content: { width: '100%', maxWidth: EnkhLayout.contentMaxWidth, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 22, paddingBottom: 60 },
@@ -98,11 +104,11 @@ const styles = StyleSheet.create({
   subtitle: { marginTop: 10, maxWidth: 650, fontSize: 17, lineHeight: 25, color: '#EFF6FF', textAlign: 'center' },
   composer: { width: '100%', maxWidth: 760, marginTop: 28, padding: 8, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.97)', shadowColor: '#082446', shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } },
   modes: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, padding: 3 },
-  mode: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 13, borderRadius: 11 },
+  mode: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 13, borderRadius: 11 },
   modeSelected: { backgroundColor: '#E8F1FF' }, modeText: { color: '#6B7F95', fontSize: 13, fontWeight: '800' }, modeTextSelected: { color: '#0B57D0' },
   input: { minHeight: 80, maxHeight: 180, paddingHorizontal: 14, paddingVertical: 12, fontSize: 17, lineHeight: 25, color: '#102A43', textAlignVertical: 'top' },
   submit: { minHeight: 48, alignSelf: 'flex-end', justifyContent: 'center', paddingHorizontal: 22, borderRadius: 14, backgroundColor: EnkhColors.primary }, submitText: { color: '#FFFFFF', fontWeight: '900', fontSize: 15 },
-  chips: { maxWidth: 780, marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }, chip: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.88)' }, chipText: { color: '#1D4E89', fontSize: 13, fontWeight: '700' },
+  chips: { maxWidth: 780, marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }, chip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.88)' }, chipText: { color: '#1D4E89', fontSize: 13, fontWeight: '700' },
   sectionHeading: { marginTop: 38, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }, sectionTitle: { fontSize: 25, fontWeight: '900', color: '#102A43' }, sectionCaption: { fontSize: 13, fontWeight: '700', color: '#829AB1' },
   cards: { marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   card: { flexGrow: 1, flexBasis: 180, minHeight: 180, padding: 19, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DFEAF7', shadowColor: '#24527A', shadowOpacity: 0.06, shadowRadius: 15, shadowOffset: { width: 0, height: 6 } },

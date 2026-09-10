@@ -42,9 +42,9 @@ test('home dashboard uses only real workspace, auth and sync state', () => {
   assert.doesNotMatch(home, /fake|mock metric|demo session/i);
 });
 
-test('home visual target includes prompt, examples, five capabilities and honest empty state', () => {
+test('home visual target includes prompt, examples, primary experiences and honest empty state', () => {
   const home = read('src/app/index.tsx');
-  for (const label of ['Chat', 'Search', 'Calculation', 'Workspace', 'Tools']) assert.match(home, new RegExp(`title="${label}"`));
+  for (const label of ['Chat', 'Хайлт', 'Workspace', 'Tools']) assert.match(home, new RegExp(`title="${label}"`));
   assert.match(home, /enkh-mountain-hero\.png/);
   assert.match(home, /examples\.map/);
   assert.match(home, /Workspace хоосон байна/);

@@ -151,6 +151,17 @@ export function entriesFor(state: WorkspaceState, sessionId: string): WorkspaceE
   return state.entries.filter((item) => item.sessionId === sessionId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+export function actionIdForSession(state: WorkspaceState, sessionId: string): string | undefined {
+  return [...state.entries].reverse().find((entry) => entry.sessionId === sessionId && entry.type === 'action')?.actionId;
+}
+
+export function workspaceSessionLabel(state: WorkspaceState, session: WorkspaceSession): string {
+  if (session.type === 'chat') return 'Chat';
+  if (session.type === 'search') return 'Хайлт';
+  const labels: Record<string, string> = { calculation: 'Тооцоолол', text: 'Текст', message: 'Мессеж', document: 'Баримт бичиг' };
+  return labels[actionIdForSession(state, session.id) || ''] || 'Ажил';
+}
+
 export function contextFor(entries: WorkspaceEntry[]): ChatMessage[] {
   const selected: ChatMessage[] = [];
   let chars = 0;
