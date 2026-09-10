@@ -9,12 +9,19 @@ const read = (file) => readFileSync(join(root, file), 'utf8');
 test('shared ENKH shell provides desktop navigation and a mobile adaptation', () => {
   const header = read('src/components/app-header.tsx');
   const css = read('src/global.css');
-  assert.match(header, /width >= 960/);
-  assert.match(header, /desktopHeader/);
-  assert.match(header, /mobileHeader/);
-  assert.match(header, /mobileNav/);
+  assert.doesNotMatch(header, /useWindowDimensions|typeof window|innerWidth|matchMedia/);
+  assert.match(header, /enkh-header/);
+  assert.match(header, /enkh-mobile-controls/);
+  assert.match(header, /enkh-desktop-footer/);
   assert.match(css, /@media \(min-width: 960px\)/);
   assert.match(css, /padding-left: 244px/);
+});
+
+test('static export renders one deterministic navigation tree before CSS breakpoints apply', () => {
+  const header = read('src/components/app-header.tsx');
+  assert.doesNotMatch(header, /desktop\s*\?|&&\s*<View/);
+  assert.match(header, /primary\.map\(link\)/);
+  assert.match(header, /utility\.map\(link\)/);
 });
 
 test('navigation remains accessible and account is separated from primary links', () => {

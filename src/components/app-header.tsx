@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { WorkspaceSyncStatus } from './workspace-sync-status';
-import { EnkhColors, EnkhLayout } from '../constants/design';
+import { EnkhColors } from '../constants/design';
 
 type ActiveRoute = 'home' | 'chat' | 'search' | 'workspace' | 'tools' | 'account' | 'status';
 type AppHeaderProps = { active?: ActiveRoute };
@@ -21,8 +21,6 @@ const utility = [
 ] as const;
 
 export function AppHeader({ active }: AppHeaderProps) {
-  const { width } = useWindowDimensions();
-  const desktop = width >= 960;
   const link = (item: (typeof primary)[number] | (typeof utility)[number]) => {
     const selected = active === item.id;
     return (
@@ -40,46 +38,42 @@ export function AppHeader({ active }: AppHeaderProps) {
   };
 
   return (
-    <View style={[styles.header, desktop ? styles.desktopHeader : styles.mobileHeader]}>
-      <View style={[styles.brandRow, desktop && styles.desktopBrandRow]}>
+    <View nativeID="enkh-header" style={styles.header}>
+      <View nativeID="enkh-brand-row" style={styles.brandRow}>
         <Pressable accessibilityRole="link" accessibilityLabel="ENKH нүүр хуудас" onPress={() => router.push('/')} style={styles.brand}>
           <View style={styles.brandMark}><Text style={styles.brandMarkText}>E</Text></View>
           <View><Text style={styles.logo}>ENKH</Text><Text style={styles.tagline}>AI ASSISTANT</Text></View>
         </Pressable>
-        {!desktop && <View style={styles.mobileControls}><Text style={styles.language}>MN</Text><Pressable accessibilityRole="link" accessibilityLabel="Account" onPress={() => router.push('/account')} style={styles.avatar}><Text style={styles.avatarText}>Н</Text></Pressable></View>}
+        <View nativeID="enkh-mobile-controls" style={styles.mobileControls}><Text style={styles.language}>MN</Text><Pressable accessibilityRole="link" accessibilityLabel="Account" onPress={() => router.push('/account')} style={styles.avatar}><Text style={styles.avatarText}>Н</Text></Pressable></View>
       </View>
 
-      <View accessibilityLabel="Үндсэн цэс" style={[styles.primary, !desktop && styles.mobileNav]}>{primary.map(link)}</View>
+      <View nativeID="enkh-primary-nav" accessibilityLabel="Үндсэн цэс" style={styles.primary}>{primary.map(link)}</View>
 
-      {desktop && <View style={styles.footer}>
+      <View nativeID="enkh-desktop-footer" style={styles.footer}>
         <WorkspaceSyncStatus />
         <View style={styles.divider} />
         <Text accessibilityLabel="Хэл: Монгол" style={styles.language}>MN · Монгол</Text>
         <View accessibilityLabel="Account болон system цэс" style={styles.utility}>{utility.map(link)}</View>
-      </View>}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { backgroundColor: '#FFFFFF', borderColor: '#DDE8F8', zIndex: 20 },
-  desktopHeader: { position: 'fixed' as never, left: 0, top: 0, bottom: 0, width: EnkhLayout.desktopNavWidth, paddingHorizontal: 18, paddingVertical: 24, borderRightWidth: 1 },
-  mobileHeader: { width: '100%', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, borderBottomWidth: 1 },
+  header: { width: '100%', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, backgroundColor: '#FFFFFF', borderColor: '#DDE8F8', borderBottomWidth: 1, zIndex: 20 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  desktopBrandRow: { marginBottom: 32 },
   brand: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 11 },
   brandMark: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: EnkhColors.primary },
   brandMarkText: { color: '#FFFFFF', fontSize: 21, fontWeight: '900' },
   logo: { fontSize: 19, fontWeight: '900', letterSpacing: 3.2, color: '#102A43' },
   tagline: { marginTop: 2, fontSize: 8, letterSpacing: 1.8, fontWeight: '800', color: '#7290B2' },
-  primary: { gap: 6 },
-  mobileNav: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
+  primary: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
   navItem: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 13, borderRadius: 13 },
   navItemActive: { backgroundColor: EnkhColors.primarySoft },
   navIcon: { width: 20, textAlign: 'center', color: '#6783A3', fontSize: 18, fontWeight: '800' },
   navText: { color: '#486581', fontSize: 15, fontWeight: '700' },
   navTextActive: { color: EnkhColors.primary },
-  footer: { marginTop: 'auto', gap: 9 },
+  footer: { display: 'none', marginTop: 'auto', gap: 9 },
   divider: { height: 1, marginVertical: 5, backgroundColor: '#E6EEF8' },
   utility: { gap: 4 },
   language: { minHeight: 38, textAlignVertical: 'center', paddingHorizontal: 12, color: '#627D98', fontSize: 13, fontWeight: '800' },
