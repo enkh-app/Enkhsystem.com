@@ -12,6 +12,7 @@ const empty = () => ({ version: 1, sessions: [], entries: [] });
 
 function harness(options = {}) {
   const timers = []; const storageValues = new Map(); const calls = [];
+  if (options.syncMeta) storageValues.set('enkh.workspace.sync.v1', JSON.stringify(options.syncMeta));
   let email = options.email === undefined ? 'account@example.test' : options.email; const accountId = options.accountId || ''; let fail = options.fail; let revision = options.revision || 3;
   const api = {
     AdminApiError,
@@ -260,6 +261,70 @@ test('empty identity retry exhaustion preserves the local payload as pending', a
   assert.equal(authCalls, 6);
   assert.equal(h.calls.length, 0);
   assert.equal(h.coordinator.getSnapshot().phase, 'pending');
+});
+
+test('cold bootstrap recovers revision seven pending local divergence after transient empty identity', async () => {
+  let authCalls = 0;
+  const accountId = 'opaque-account-fixture';
+  const getAuthState = async () => {
+    authCalls += 1;
+    if (authCalls === 1) return { authenticated: false, admin: false };
+    return { authenticated: true, admin: false, user: { accountId, email: '' } };
+  };
+  const remote = { ...empty(), sessions: [{ id: 'revision-seven-cloud' }] };
+  const local = { ...remote, sessions: [...remote.sessions, { id: 'preserved-unsynced-calculation' }] };
+  const h = harness({
+    getAuthState,
+    revision: 7,
+    remote,
+    syncMeta: { ownerKey: `account:${accountId}`, revision: 7 },
+    syncImpl: async (workspace, expectedRevision) => ({ revision: expectedRevision + 1, workspace }),
+  });
+  await h.coordinator.initialize(local);
+  assert.equal(h.coordinator.getSnapshot().phase, 'pending');
+  assert.equal(h.calls.length, 0);
+  await h.runLatest();
+  assert.equal(h.calls.length, 0);
+  await h.runLatest();
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].expectedRevision, 7);
+  assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 8 });
+});
+
+test('cold bootstrap never PUTs when identity remains logged out through retry exhaustion', async () => {
+  const remote = { ...empty(), sessions: [{ id: 'cloud' }] };
+  const local = { ...remote, sessions: [...remote.sessions, { id: 'pending-local' }] };
+  const h = harness({
+    getAuthState: async () => ({ authenticated: false, admin: false }),
+    revision: 7,
+    remote,
+    syncMeta: { ownerKey: 'account:opaque-account-fixture', revision: 7 },
+  });
+  await h.coordinator.initialize(local);
+  for (let index = 0; index < 10; index += 1) await h.runLatest();
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.coordinator.getSnapshot().phase, 'pending');
+});
+
+test('cold bootstrap account mismatch remains conflict and never PUTs pending local data', async () => {
+  let authCalls = 0;
+  const getAuthState = async () => {
+    authCalls += 1;
+    if (authCalls === 1) return { authenticated: false, admin: false };
+    return { authenticated: true, admin: false, user: { accountId: 'different-account-fixture', email: '' } };
+  };
+  const remote = { ...empty(), sessions: [{ id: 'cloud' }] };
+  const local = { ...remote, sessions: [...remote.sessions, { id: 'private-pending-local' }] };
+  const h = harness({
+    getAuthState,
+    revision: 7,
+    remote,
+    syncMeta: { ownerKey: 'account:original-account-fixture', revision: 7 },
+  });
+  await h.coordinator.initialize(local);
+  await h.runLatest();
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.coordinator.getSnapshot().phase, 'conflict');
 });
 
 test('restored local backup remains pending and cannot auto-sync until explicit bind', async () => {

@@ -51,13 +51,24 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
     return '';
   };
 
+  const scheduleBootstrapRetry = (local: WorkspaceState) => {
+    if (retryTimer || retryAttempts >= MAX_TRANSIENT_RETRIES) return;
+    const delay = Math.min(30000, 2000 * (2 ** retryAttempts));
+    retryAttempts += 1;
+    retryTimer = deps.setTimer(() => {
+      retryTimer = null;
+      initialized = false;
+      void initialize(local);
+    }, delay);
+  };
+
   const initialize = async (local = loadWorkspace().state) => {
     if (initialized) return;
     if (initializing) return initializing;
     initializing = (async () => {
       try {
         const key = await currentAccountKey();
-        if (!key) return;
+        if (!key) { publish('pending'); scheduleBootstrapRetry(local); return; }
         const remote = await deps.getCloudWorkspace();
         const meta = readMeta();
         ownerKey = key;
@@ -69,7 +80,7 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
         publish(sameWorkspace(local, remote.workspace) ? 'synced' : 'pending', remote.revision);
         writeMeta();
         if (!sameWorkspace(local, remote.workspace)) schedule(local);
-      } catch { publish('pending'); }
+      } catch { publish('pending'); scheduleBootstrapRetry(local); }
       finally { initialized = true; initializing = null; }
     })();
     return initializing;
