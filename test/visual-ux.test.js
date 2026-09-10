@@ -33,10 +33,10 @@ test('navigation remains accessible and account is separated from primary links'
   assert.match(header, /minHeight: 44/);
 });
 
-test('home dashboard uses only real workspace, auth and sync state', () => {
+test('home dashboard uses real workspace and sync state without public account identity', () => {
   const home = read('src/app/index.tsx');
   assert.match(home, /loadWorkspace\(\)/);
-  assert.match(home, /getAuthState\(\)/);
+  assert.doesNotMatch(home, /getAuthState\(\)|firstName|auth\.user/);
   assert.match(home, /backgroundWorkspaceSync\.getSnapshot\(\)/);
   assert.match(home, /workspaceSyncLabel\(sync\.phase\)/);
   assert.doesNotMatch(home, /fake|mock metric|demo session/i);

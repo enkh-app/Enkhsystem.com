@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getAuthState } from '../api';
 import { AppHeader } from '../components/app-header';
 import { enkhStructuredData, SeoHead } from '../components/seo-head';
 import { EnkhColors, EnkhLayout } from '../constants/design';
@@ -19,14 +18,12 @@ export default function HomeScreen() {
   const [mode, setMode] = useState<Mode>('chat');
   const [recent, setRecent] = useState<WorkspaceSession[]>([]);
   const [workspace, setWorkspace] = useState<WorkspaceState>({ version: 1, sessions: [], entries: [] });
-  const [firstName, setFirstName] = useState('');
   const [sync, setSync] = useState<WorkspaceSyncSnapshot>(backgroundWorkspaceSync.getSnapshot());
 
   useEffect(() => {
     const loaded = loadWorkspace().state;
     setWorkspace(loaded);
     setRecent(loaded.sessions.slice(0, 4));
-    void getAuthState().then((auth) => setFirstName(auth.authenticated ? (auth.user?.name || '').trim().split(/\s+/)[0] : '')).catch(() => {});
     const unsubscribe = backgroundWorkspaceSync.subscribe(() => setSync(backgroundWorkspaceSync.getSnapshot()));
     return () => { unsubscribe(); };
   }, []);
@@ -50,7 +47,7 @@ export default function HomeScreen() {
         <ImageBackground source={hero} imageStyle={styles.heroImage} style={styles.hero}>
           <View style={styles.heroShade}>
             <Text style={styles.eyebrow}>ENKH · ТАНЫ ӨДӨР ТУТМЫН AI</Text>
-            <Text accessibilityRole="header" style={styles.title}>{firstName ? `Сайн байна уу, ${firstName}!` : 'Сайн байна уу!'}</Text>
+            <Text accessibilityRole="header" style={styles.title}>Сайн байна уу!</Text>
             <Text style={styles.subtitle}>Асуух, хайх, тооцоолох ажлаа нэг тайван орчноос эхлүүлээрэй.</Text>
             <View style={styles.composer}>
               <View style={styles.modes}>
