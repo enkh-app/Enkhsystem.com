@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getAuthState } from '../api';
 import { AppHeader } from '../components/app-header';
+import { enkhStructuredData, SeoHead } from '../components/seo-head';
 import { EnkhColors, EnkhLayout } from '../constants/design';
 import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
 import { loadWorkspace, workspaceSessionLabel, WorkspaceSession, WorkspaceState } from '../workspace-store';
@@ -38,6 +39,12 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.page}>
+      <SeoHead
+        title="ENKH — Монгол хэл дээрх AI туслах"
+        description="ENKH нь Монгол хэлээр асуух, эх сурвалжтай хайх, тооцоолох, текст, мессеж болон баримт бичиг бэлтгэх AI туслах юм."
+        path="/"
+        structuredData={enkhStructuredData}
+      />
       <AppHeader active="home" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <ImageBackground source={hero} imageStyle={styles.heroImage} style={styles.hero}>
@@ -56,6 +63,11 @@ export default function HomeScreen() {
             <View style={styles.chips}>{examples.map((example) => <Pressable key={example} accessibilityRole="button" onPress={() => { setMode(example.includes('хайх') ? 'search' : 'chat'); setInput(example); }} style={styles.chip}><Text style={styles.chipText}>{example}</Text></Pressable>)}</View>
           </View>
         </ImageBackground>
+
+        <View style={styles.aboutCard}>
+          <Text accessibilityRole="header" style={styles.aboutTitle}>ENKH гэж юу вэ?</Text>
+          <Text style={styles.aboutText}>ENKH буюу Enkh AI нь өдөр тутмын асуулт, эх сурвалжтай вэб хайлт, хувь ба хэмжих нэгжийн тооцоо, текст боловсруулах, мессеж болон бүтэцтэй баримт бичиг бэлтгэхэд тусалдаг Монгол хэл дээрх AI бүтээгдэхүүн юм.</Text>
+        </View>
 
         <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Юу хийх вэ?</Text><Text style={styles.sectionCaption}>Таны ENKH workspace</Text></View>
         <View style={styles.cards}>
@@ -110,6 +122,9 @@ const styles = StyleSheet.create({
   submit: { minHeight: 48, alignSelf: 'flex-end', justifyContent: 'center', paddingHorizontal: 22, borderRadius: 14, backgroundColor: EnkhColors.primary }, submitText: { color: '#FFFFFF', fontWeight: '900', fontSize: 15 },
   chips: { maxWidth: 780, marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }, chip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.88)' }, chipText: { color: '#1D4E89', fontSize: 13, fontWeight: '700' },
   sectionHeading: { marginTop: 38, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }, sectionTitle: { fontSize: 25, fontWeight: '900', color: '#102A43' }, sectionCaption: { fontSize: 13, fontWeight: '700', color: '#829AB1' },
+  aboutCard: { marginTop: 20, padding: 22, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DFEAF7' },
+  aboutTitle: { fontSize: 20, fontWeight: '900', color: '#102A43' },
+  aboutText: { marginTop: 8, maxWidth: 860, fontSize: 15, lineHeight: 24, color: '#526D82' },
   cards: { marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   card: { flexGrow: 1, flexBasis: 180, minHeight: 180, padding: 19, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DFEAF7', shadowColor: '#24527A', shadowOpacity: 0.06, shadowRadius: 15, shadowOffset: { width: 0, height: 6 } },
   cardIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EAF2FF' }, cardIconText: { color: '#0B57D0', fontSize: 19, fontWeight: '900' }, cardTitle: { marginTop: 15, fontSize: 18, fontWeight: '900', color: '#102A43' }, cardDescription: { flex: 1, marginTop: 7, fontSize: 14, lineHeight: 21, color: '#627D98' }, cardAction: { marginTop: 14, color: '#0B57D0', fontSize: 13, fontWeight: '900' },

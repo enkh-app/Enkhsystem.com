@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../components/app-header';
+import { SeoHead } from '../components/seo-head';
 
 const available = [
   { title: 'Тооцоолол', description: 'Тоон илэрхийлэл, хувь болон хэмжих нэгжтэй тооцоо.', route: '/tools/calculation', label: 'Ажиллуулах' },
@@ -16,6 +17,7 @@ const upcoming = ['Сануулга'];
 export default function ActionsScreen() {
   return (
     <SafeAreaView style={styles.page}>
+      <SeoHead title="ENKH Tools — AI ажлын хэрэгслүүд" description="Тооцоолол, текст боловсруулах, мессеж болон бүтэцтэй баримт бичиг бэлтгэх ENKH хэрэгслүүд." path="/tools" />
       <AppHeader active="tools" />
       <ScrollView contentContainerStyle={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>ENKH Tools</Text>

@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AdminApiError, AdminDashboardData, adminLoginUrl, getAdminDashboard } from '../../api';
 import { AppHeader } from '../../components/app-header';
+import { SeoHead } from '../../components/seo-head';
 
 const number = new Intl.NumberFormat('mn-MN');
 
@@ -31,7 +32,7 @@ export default function AdminDataScreen() {
 
   useEffect(() => { void load(); }, [load]);
 
-  return <SafeAreaView style={styles.page}><AppHeader /><ScrollView contentContainerStyle={styles.content}>
+  return <SafeAreaView style={styles.page}><SeoHead title="ENKH Admin Data" description="ENKH-ийн хамгаалагдсан админ мэдээллийн самбар." path="/admin/data" noIndex /><AppHeader /><ScrollView contentContainerStyle={styles.content}>
     <View style={styles.heading}><View><Text accessibilityRole="header" style={styles.title}>Enkh Data Dashboard</Text><Text style={styles.subtitle}>Admin-only, read-only system overview</Text></View>{data && <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.refresh}><Text style={styles.refreshText}>Шинэчлэх</Text></Pressable>}</View>
     {loading && <View style={styles.state}><ActivityIndicator color="#171717" /><Text style={styles.stateTitle}>Dashboard ачаалж байна…</Text></View>}
     {!loading && status === 'auth' && <View style={styles.state}><Text style={styles.stateTitle}>Нэвтрэх шаардлагатай</Text><Text style={styles.emptyText}>Энэ хэсэг зөвхөн ENKH админ хэрэглэгчдэд нээлттэй.</Text><Pressable accessibilityRole="link" onPress={() => void Linking.openURL(adminLoginUrl)} style={styles.primary}><Text style={styles.primaryText}>Auth0-оор нэвтрэх</Text></Pressable></View>}

@@ -3,9 +3,10 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getSystemHealth } from '../api';
 import { AppHeader } from '../components/app-header';
+import { SeoHead } from '../components/seo-head';
 
 type HealthState='loading'|'online'|'offline';
-export default function StatusScreen(){const[state,setState]=useState<HealthState>('loading');const check=async()=>{setState('loading');try{setState((await getSystemHealth()).healthy?'online':'offline');}catch{setState('offline');}};useEffect(()=>{void check();},[]);return <SafeAreaView style={styles.page}><AppHeader active="status"/><ScrollView contentContainerStyle={styles.content}>
+export default function StatusScreen(){const[state,setState]=useState<HealthState>('loading');const check=async()=>{setState('loading');try{setState((await getSystemHealth()).healthy?'online':'offline');}catch{setState('offline');}};useEffect(()=>{void check();},[]);return <SafeAreaView style={styles.page}><SeoHead title="ENKH System Status" description="ENKH үйлчилгээний одоогийн API ажиллагааны төлөв." path="/status"/><AppHeader active="status"/><ScrollView contentContainerStyle={styles.content}>
   <Text accessibilityRole="header" style={styles.title}>System status</Text><Text style={styles.subtitle}>Зардалгүй health check. AI хүсэлт автоматаар илгээхгүй.</Text>
   <View style={styles.card}><View style={styles.row}><Text style={styles.cardTitle}>ENKH API</Text>{state==='loading'?<ActivityIndicator color="#171717"/>:<Text style={[styles.badge,state==='online'?styles.ok:styles.bad]}>{state==='online'?'ONLINE':'UNAVAILABLE'}</Text>}</View><Text style={styles.body}>Chat, Search, Tools-ийн үндсэн backend холбоо.</Text><Pressable accessibilityRole="button" onPress={()=>void check()} style={styles.button}><Text style={styles.buttonText}>Дахин шалгах</Text></Pressable></View>
   <View style={styles.card}><Text style={styles.cardTitle}>AI ба Search</Text><Text style={styles.body}>Бодит хүсэлт хийх үед баталгаажна. Status дэлгэц paid API call хийхгүй.</Text></View><View style={styles.card}><Text style={styles.cardTitle}>Workspace</Text><Text style={styles.body}>Local-first: энэ browser-ийн хадгалалт ашиглана.</Text></View>

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionApiError, sendMessage } from '../api';
 import { AppHeader } from '../components/app-header';
+import { SeoHead } from '../components/seo-head';
 import { addEntry, contextFor, createSession, emptyWorkspace, entriesFor, loadWorkspace, saveWorkspace, WorkspaceEntry, WorkspaceState } from '../workspace-store';
 import { backgroundWorkspaceSync } from '../workspace-sync';
 
@@ -85,6 +86,7 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.page}>
+      <SeoHead title="ENKH Chat — Монгол AI туслах" description="ENKH AI-тай Монгол хэлээр үргэлжилсэн яриа хийж, асуултдаа ойлгомжтой хариулт аваарай." path="/chat" />
       <AppHeader active="chat" />
       <KeyboardAvoidingView style={styles.layout} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.intro}><View><Text accessibilityRole="header" style={styles.title}>ENKH Chat</Text><Text style={styles.subtitle}>{sessionId ? 'Энэ conversation browser дээр автоматаар хадгалагдана.' : 'Шинэ conversation эхлүүлэх асуултаа бичнэ үү.'}</Text></View>{sessionId ? <Pressable accessibilityRole="button" onPress={() => router.replace('/chat')} style={styles.newChat}><Text style={styles.newChatText}>+ Шинэ chat</Text></Pressable> : null}</View>

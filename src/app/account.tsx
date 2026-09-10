@@ -3,6 +3,7 @@ import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, Vi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authLoginUrl, authLogoutUrl, AuthState, getAuthState } from '../api';
 import { AppHeader } from '../components/app-header';
+import { SeoHead } from '../components/seo-head';
 import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
 
 export default function AccountScreen() {
@@ -11,7 +12,7 @@ export default function AccountScreen() {
   const [sync, setSync] = useState<WorkspaceSyncSnapshot>(backgroundWorkspaceSync.getSnapshot());
   const load = async () => { setError(false); try { setAuth(await getAuthState()); } catch { setError(true); } };
   useEffect(() => { void load(); const unsubscribe = backgroundWorkspaceSync.subscribe(() => setSync(backgroundWorkspaceSync.getSnapshot())); return () => { unsubscribe(); }; }, []);
-  return <SafeAreaView style={styles.page}><AppHeader active="account" /><ScrollView contentContainerStyle={styles.content}>
+  return <SafeAreaView style={styles.page}><SeoHead title="ENKH Account" description="ENKH account болон хувийн cloud workspace-ийн удирдлага." path="/account" noIndex /><AppHeader active="account" /><ScrollView contentContainerStyle={styles.content}>
     <Text accessibilityRole="header" style={styles.title}>Account</Text><Text style={styles.subtitle}>ENKH account болон workspace-ийн төлөв.</Text>
     {!auth && !error && <View style={styles.card}><ActivityIndicator /><Text style={styles.body}>Нэвтрэлтийн төлөв шалгаж байна…</Text></View>}
     {error && <View style={styles.card}><Text style={styles.cardTitle}>Account service түр холбогдсонгүй</Text><Pressable accessibilityRole="button" onPress={() => void load()} style={styles.button}><Text style={styles.buttonText}>Дахин оролдох</Text></Pressable></View>}

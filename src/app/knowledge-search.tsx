@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { searchWeb, SearchSource } from '../api';
 import { AppHeader } from '../components/app-header';
+import { SeoHead } from '../components/seo-head';
 import { addEntry, createSession, emptyWorkspace, entriesFor, loadWorkspace, saveWorkspace, WorkspaceState } from '../workspace-store';
 import { backgroundWorkspaceSync } from '../workspace-sync';
 
@@ -70,7 +71,7 @@ export default function KnowledgeSearchScreen() {
   useEffect(() => { if (initialQuery && !initialSearched.current) { initialSearched.current = true; setQuery(initialQuery); void search(initialQuery); } }, [initialQuery]);
 
   return (
-    <SafeAreaView style={styles.page}><AppHeader active="search" /><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={styles.page}><SeoHead title="ENKH Хайлт — Эх сурвалжтай вэб хайлт" description="Вэбээс мэдээлэл хайж, ENKH-ийн нэгтгэсэн хариу болон ашигласан эх сурвалжуудыг хамтад нь аваарай." path="/search" /><AppHeader active="search" /><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>Эх сурвалжтай вэб хайлт</Text><Text style={styles.subtitle}>{sessionId ? 'Хадгалсан хайлтын үр дүн. Дахин нээхэд API дахин дуудагдахгүй.' : 'Бодит вэбээс хайж, хариу болон эх сурвалжийг session-д хадгална.'}</Text></View>
       {!!storageWarning && <Text style={styles.warning}>{storageWarning}</Text>}
       <View style={styles.searchBox}><TextInput accessibilityLabel="Вэб хайлтын асуулт" editable={!loading} value={query} onChangeText={setQuery} onSubmitEditing={() => void search()} placeholder="Юу хайх вэ?" placeholderTextColor="#888" returnKeyType="search" style={styles.input}/><Pressable accessibilityRole="button" accessibilityLabel="Вэбээс хайх" disabled={!query.trim() || loading} onPress={() => void search()} style={({pressed})=>[styles.button,(!query.trim()||loading)&&styles.disabled,pressed&&styles.pressed]}><Text style={styles.buttonText}>Хайх</Text></Pressable></View>

@@ -8,6 +8,7 @@ import { backgroundWorkspaceSync } from '../workspace-sync';
 import { documentAfterEdit, documentFromResult, modelToEditableText, StructuredDocument } from '../document-model';
 import { addEntry, createSession, entriesFor, loadWorkspace, makeId, saveWorkspace, updateEntryContent, updateEntryDocument } from '../workspace-store';
 import { AppHeader } from './app-header';
+import { SeoHead } from './seo-head';
 
 type DraftKind = 'text' | 'message' | 'document';
 type DraftResult = { type: string; content: string; document?: unknown; editable: boolean; sent?: boolean; exportCapabilities?: { docx: boolean; pdf: boolean }; [key: string]: unknown };
@@ -120,7 +121,13 @@ export function DraftingTool({ kind }: { kind: DraftKind }) {
     } catch { setNotice('Автоматаар хуулах боломжгүй. Текстээ сонгож хуулна уу.'); }
   };
 
-  return <SafeAreaView style={styles.page}><AppHeader active="tools"/><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+  const seo = {
+    text: ['ENKH Текст боловсруулах', 'Текст засах, богиносгох, дэлгэрүүлэх, хураангуйлах, орчуулах болон албан хэлбэрт оруулах AI хэрэгсэл.', '/action-text'],
+    message: ['ENKH Мессеж бэлтгэх', 'Зорилго, нөхцөл болон өнгө аяст тохирсон засварлах боломжтой мессежийн ноорог бэлтгэнэ.', '/action-message'],
+    document: ['ENKH Баримт бичиг бэлтгэх', 'Монгол хэл дээр бүтэцтэй, засварлах боломжтой баримт бичиг бэлтгэж, бодит DOCX файл татна.', '/action-document'],
+  }[kind];
+
+  return <SafeAreaView style={styles.page}><SeoHead title={seo[0]} description={seo[1]} path={seo[2]} /><AppHeader active="tools"/><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
     <Text accessibilityRole="header" style={styles.title}>{labels[0]}</Text><Text style={styles.subtitle}>{labels[1]}</Text>
     <View style={styles.card}>
       {kind === 'text' && <><Text style={styles.label}>Үйлдэл</Text><Chips items={textOperations} value={operation} onChange={setOperation}/><Field label="Боловсруулах текст" value={text} onChange={setText} large/>{operation === 'translate' && <Field label="Орчуулах хэл" value={targetLanguage} onChange={setTargetLanguage}/>}<Field label="Нэмэлт чиглэл (заавал биш)" value={instructions} onChange={setInstructions}/></>}

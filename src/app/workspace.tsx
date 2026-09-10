@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../components/app-header';
+import { SeoHead } from '../components/seo-head';
 import { AdminApiError, getAuthState, getCloudWorkspace, importCloudWorkspace, syncCloudWorkspace } from '../api';
 import { actionIdForSession, BackupInspection, clearWorkspace, deleteSession, inspectWorkspaceBackup, loadWorkspace, replaceWorkspaceSafely, restoreWorkspaceBackup, saveWorkspace, workspaceSessionLabel, WorkspaceSession, WorkspaceState } from '../workspace-store';
 import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
@@ -86,6 +87,7 @@ export default function WorkspaceScreen() {
 
   return (
     <SafeAreaView style={styles.page}>
+      <SeoHead title="ENKH Workspace" description="ENKH дээр хадгалсан хувийн яриа, хайлт, тооцоолол болон нооргуудын workspace." path="/workspace" noIndex />
       <AppHeader active="workspace" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headingRow}>
