@@ -50,3 +50,12 @@ test('retry keeps the saved user entry and does not append it twice', () => {
   assert.match(chat, /send\(failedText, true\)/);
   assert.match(chat, /Таны асуулт history-д хадгалагдсан/);
 });
+
+test('web chat sends on Enter while preserving Shift+Enter for a new line', () => {
+  const chat = readFileSync(join(__dirname, '..', 'src', 'app', 'chat.tsx'), 'utf8');
+  assert.match(chat, /Platform\.OS === 'web'/);
+  assert.match(chat, /nativeEvent\.key === 'Enter'/);
+  assert.match(chat, /shiftKey/);
+  assert.match(chat, /event\.preventDefault\(\)/);
+  assert.match(chat, /void send\(\)/);
+});
