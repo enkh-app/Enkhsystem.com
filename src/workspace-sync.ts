@@ -16,6 +16,7 @@ type Dependencies = {
 };
 
 const META_KEY = 'enkh.workspace.sync.v1';
+const MAX_TRANSIENT_RETRIES = 4;
 const sameWorkspace = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const browserStorage = () => { try { return typeof window === 'undefined' ? null : window.localStorage; } catch { return null; } };
 const fingerprint = async (email: string) => {
@@ -75,7 +76,7 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
   };
 
   const scheduleTransientRetry = () => {
-    if (retryTimer || !latest || !enabled) return;
+    if (retryTimer || !latest || !enabled || retryAttempts >= MAX_TRANSIENT_RETRIES) return;
     const delay = Math.min(30000, 2000 * (2 ** retryAttempts));
     retryAttempts += 1;
     retryTimer = deps.setTimer(() => { retryTimer = null; void drain(); }, delay);
@@ -89,7 +90,7 @@ export function createWorkspaceSyncCoordinator(overrides: Partial<Dependencies> 
     publish('syncing');
     try {
       const key = await currentAccountKey();
-      if (!key) { publish('pending'); return; }
+      if (!key) { publish('pending'); scheduleTransientRetry(); return; }
       if (key !== ownerKey) { enabled = false; publish('conflict'); return; }
       const result = await deps.syncCloudWorkspace(state, snapshot.revision);
       retryAttempts = 0;

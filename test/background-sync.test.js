@@ -189,6 +189,79 @@ test('transient live identity recheck preserves local state and safely retries r
   assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 6 });
 });
 
+test('transient empty identity recheck retries revision seven and syncs only after the same account returns', async () => {
+  let authCalls = 0;
+  const getAuthState = async () => {
+    authCalls += 1;
+    if (authCalls === 2) return { authenticated: false, admin: false };
+    return { authenticated: true, admin: false, user: { accountId: 'opaque-account-fixture', email: '' } };
+  };
+  const baseline = { ...empty(), sessions: [{ id: 'revision-seven-baseline' }] };
+  const next = { ...baseline, sessions: [...baseline.sessions, { id: 'fresh-calculation' }] };
+  const h = harness({ getAuthState, revision: 6, remote: empty(), syncImpl: async (workspace, expectedRevision) => ({ revision: expectedRevision + 1, workspace }) });
+  await h.coordinator.initialize(baseline);
+  await h.coordinator.bind(7, baseline);
+  h.coordinator.schedule(next);
+  await h.runLatest();
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.coordinator.getSnapshot().phase, 'pending');
+  await h.runLatest();
+  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls[0].expectedRevision, 7);
+  assert.deepEqual(h.coordinator.getSnapshot(), { phase: 'synced', revision: 8 });
+});
+
+test('logout during an empty-identity retry never sends the pending workspace', async () => {
+  let authCalls = 0;
+  const getAuthState = async () => {
+    authCalls += 1;
+    return authCalls === 1
+      ? { authenticated: true, admin: false, user: { accountId: 'opaque-account-fixture', email: '' } }
+      : { authenticated: false, admin: false };
+  };
+  const baseline = { ...empty(), sessions: [{ id: 'baseline' }] };
+  const h = harness({ getAuthState, remote: baseline });
+  await h.coordinator.initialize(baseline);
+  h.coordinator.schedule({ ...baseline, sessions: [...baseline.sessions, { id: 'pending-local' }] });
+  for (let index = 0; index < 8; index += 1) await h.runLatest();
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.coordinator.getSnapshot().phase, 'pending');
+});
+
+test('account switch during pending identity verification is a hard conflict without PUT', async () => {
+  let authCalls = 0;
+  const getAuthState = async () => {
+    authCalls += 1;
+    const accountId = authCalls === 1 ? 'first-account-fixture' : 'second-account-fixture';
+    return { authenticated: true, admin: false, user: { accountId, email: '' } };
+  };
+  const baseline = { ...empty(), sessions: [{ id: 'baseline' }] };
+  const h = harness({ getAuthState, remote: baseline });
+  await h.coordinator.initialize(baseline);
+  h.coordinator.schedule({ ...baseline, sessions: [...baseline.sessions, { id: 'private-pending-local' }] });
+  await h.runLatest();
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.coordinator.getSnapshot().phase, 'conflict');
+});
+
+test('empty identity retry exhaustion preserves the local payload as pending', async () => {
+  let authCalls = 0;
+  const getAuthState = async () => {
+    authCalls += 1;
+    return authCalls === 1
+      ? { authenticated: true, admin: false, user: { accountId: 'opaque-account-fixture', email: '' } }
+      : { authenticated: false, admin: false };
+  };
+  const baseline = { ...empty(), sessions: [{ id: 'baseline' }] };
+  const h = harness({ getAuthState, remote: baseline });
+  await h.coordinator.initialize(baseline);
+  h.coordinator.schedule({ ...baseline, sessions: [...baseline.sessions, { id: 'must-survive' }] });
+  for (let index = 0; index < 10; index += 1) await h.runLatest();
+  assert.equal(authCalls, 6);
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.coordinator.getSnapshot().phase, 'pending');
+});
+
 test('restored local backup remains pending and cannot auto-sync until explicit bind', async () => {
   const h = harness(); await h.coordinator.initialize(empty());
   h.coordinator.markLocalDivergent();
