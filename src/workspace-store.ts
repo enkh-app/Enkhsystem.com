@@ -126,6 +126,23 @@ export function addEntry(state: WorkspaceState, entry: Omit<WorkspaceEntry, 'id'
   return { ...state, sessions, entries: [...state.entries, nextEntry] };
 }
 
+export function updateEntryContent(state: WorkspaceState, entryId: string, content: string): WorkspaceState {
+  const value = content.trim();
+  if (!value) return state;
+  let sessionId = '';
+  const entries = state.entries.map((entry) => {
+    if (entry.id !== entryId) return entry;
+    sessionId = entry.sessionId;
+    const structuredResult = entry.structuredResult && typeof entry.structuredResult === 'object'
+      ? { ...entry.structuredResult as Record<string, unknown>, content: value }
+      : entry.structuredResult;
+    return { ...entry, content: value, structuredResult };
+  });
+  if (!sessionId) return state;
+  const now = new Date().toISOString();
+  return { ...state, entries, sessions: state.sessions.map((session) => session.id === sessionId ? { ...session, updatedAt: now } : session) };
+}
+
 export function deleteSession(state: WorkspaceState, sessionId: string): WorkspaceState {
   return { ...state, sessions: state.sessions.filter((item) => item.id !== sessionId), entries: state.entries.filter((item) => item.sessionId !== sessionId) };
 }

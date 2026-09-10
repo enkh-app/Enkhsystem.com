@@ -62,6 +62,14 @@ test('duplicate entry id is ignored', () => {
   assert.equal(store.exports.addEntry(once, { ...entry, content: 'two' }).entries.length, 1);
 });
 
+test('editable draft updates its workspace entry without creating a duplicate', () => {
+  let state = store.exports.emptyWorkspace();
+  const created = store.exports.createSession(state, 'action', 'draft'); state = created.state;
+  state = store.exports.addEntry(state, { id: 'draft-entry', sessionId: created.session.id, role: 'assistant', type: 'action', content: 'first', actionId: 'text', structuredResult: { type: 'text_draft', content: 'first' } });
+  const updated = store.exports.updateEntryContent(state, 'draft-entry', 'edited');
+  assert.equal(updated.entries.length, 1); assert.equal(updated.entries[0].content, 'edited'); assert.equal(updated.entries[0].structuredResult.content, 'edited');
+});
+
 test('backup inspection is read-only and reports only validated aggregate metadata', () => {
   const storage = memoryStorage();
   let state = store.exports.emptyWorkspace();

@@ -59,8 +59,8 @@ export const ACTIONS: ActionDefinition[] = [
   {
     id: 'message',
     icon: '💬',
-    title: 'Мессеж илгээх',
-    description: 'Мессеж бичиж илгээх үйлдэл',
+    title: 'Мессеж бэлтгэх',
+    description: 'Editable мессежийн ноорог бэлтгэнэ; автоматаар илгээхгүй',
     inputLabel: 'Мессежийн мэдээлэл',
     placeholder: 'Хэнд ямар мессеж илгээхийг бичнэ үү...',
     examples: [

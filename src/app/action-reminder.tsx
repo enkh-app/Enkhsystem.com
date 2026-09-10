@@ -1,5 +1,5 @@
 import { ComingSoonAction } from '../components/coming-soon-action';
 
 export default function ReminderActionScreen() {
-  return <ComingSoonAction title="Сануулагч" />;
+  return <ComingSoonAction title="Сануулагч — durable scheduler болон notification delivery шаардлагатай" />;
 }

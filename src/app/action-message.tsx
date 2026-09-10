@@ -1,5 +1,5 @@
-import { ComingSoonAction } from '../components/coming-soon-action';
+import { DraftingTool } from '../components/drafting-tool';
 
 export default function MessageActionScreen() {
-  return <ComingSoonAction title="Мессеж бэлтгэх" />;
+  return <DraftingTool kind="message" />;
 }

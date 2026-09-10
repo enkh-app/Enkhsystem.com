@@ -1,5 +1,5 @@
-import { ComingSoonAction } from '../components/coming-soon-action';
+import { DraftingTool } from '../components/drafting-tool';
 
 export default function DocumentActionScreen() {
-  return <ComingSoonAction title="Баримт бичиг" />;
+  return <DraftingTool kind="document" />;
 }

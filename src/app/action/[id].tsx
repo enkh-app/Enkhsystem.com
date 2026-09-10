@@ -22,6 +22,7 @@ import { addEntry, createSession, entriesFor, loadWorkspace, saveWorkspace } fro
 import { backgroundWorkspaceSync } from '../../workspace-sync';
 import { ComingSoonAction } from '../../components/coming-soon-action';
 import { WorkspaceSyncStatus } from '../../components/workspace-sync-status';
+import { DraftingTool } from '../../components/drafting-tool';
 
 export function generateStaticParams() {
   return ACTIONS.map((action) => ({ id: action.id }));
@@ -162,6 +163,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
   }
 
   if (actionId === 'search') return <Redirect href="/search" />;
+  if (actionId === 'text' || actionId === 'message' || actionId === 'document') return <DraftingTool kind={actionId} />;
   if (actionId !== 'calculation') return <ComingSoonAction title={action.title} />;
 
   const calculation = executionData?.result;

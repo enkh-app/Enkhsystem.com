@@ -8,9 +8,12 @@ const available = [
   { title: 'Тооцоолол', description: 'Тоон илэрхийлэл, хувь болон хэмжих нэгжтэй тооцоо.', route: '/tools/calculation', label: 'Ажиллуулах' },
   { title: 'AI мэдлэг', description: 'Монгол асуултад ENKH AI-аас шууд хариулт авах.', route: '/chat', label: 'Асуух' },
   { title: 'Вэб хайлт', description: 'Бодит вэб хайлт, нэгтгэсэн хариу, эх сурвалж.', route: '/search', label: 'Хайх' },
+  { title: 'Текст боловсруулах', description: 'Засах, богиносгох, дэлгэрүүлэх, хураангуйлах, орчуулах.', route: '/action/text', label: 'Боловсруулах' },
+  { title: 'Мессеж бэлтгэх', description: 'Өнгө аястай editable draft бэлтгэнэ; автоматаар илгээхгүй.', route: '/action-message', label: 'Ноорог бэлтгэх' },
+  { title: 'Баримт бичиг', description: 'Бүтэцтэй editable баримтын draft бэлтгэнэ.', route: '/action-document', label: 'Ноорог бэлтгэх' },
 ] as const;
 
-const upcoming = ['Мессеж бэлтгэх', 'Сануулагч', 'Баримт бичиг', 'Текст боловсруулах'];
+const upcoming = ['Сануулагч — durable scheduler/notification шаардлагатай'];
 
 export default function ActionsScreen() {
   return (
