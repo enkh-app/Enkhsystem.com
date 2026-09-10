@@ -14,7 +14,10 @@ test('shared ENKH shell provides desktop navigation and a mobile adaptation', ()
   assert.match(header, /enkh-mobile-controls/);
   assert.match(header, /enkh-desktop-footer/);
   assert.match(css, /@media \(min-width: 960px\)/);
-  assert.match(css, /padding-left: 244px/);
+  assert.match(css, /padding-left: 260px/);
+  assert.match(header, /enkh-folded-mark/);
+  assert.match(header, /ENKH AI/);
+  assert.match(header, /YOUR WORK PARTNER/);
 });
 
 test('static export renders one deterministic navigation tree before CSS breakpoints apply', () => {

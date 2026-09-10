@@ -104,14 +104,14 @@ function QuickTool({ icon, label, onPress }: { icon: string; label: string; onPr
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: EnkhColors.canvas },
-  content: { width: '100%', maxWidth: EnkhLayout.contentMaxWidth, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 22, paddingBottom: 60 },
-  hero: { width: '100%', minHeight: 500, overflow: 'hidden', borderRadius: 28, justifyContent: 'center', backgroundColor: '#0A3A72' },
+  content: { width: '100%', maxWidth: EnkhLayout.contentMaxWidth, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 26, paddingBottom: 60 },
+  hero: { width: '100%', minHeight: 470, overflow: 'hidden', borderRadius: 28, justifyContent: 'center', backgroundColor: '#0A3A72' },
   heroImage: { borderRadius: 28 },
-  heroShade: { flex: 1, minHeight: 500, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 44, backgroundColor: 'rgba(5,35,76,0.36)' },
+  heroShade: { flex: 1, minHeight: 470, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 28, paddingVertical: 40, backgroundColor: 'rgba(5,35,76,0.34)' },
   eyebrow: { fontSize: 12, fontWeight: '900', letterSpacing: 2.2, color: '#DCEAFF' },
   title: { marginTop: 13, fontSize: 46, lineHeight: 55, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
   subtitle: { marginTop: 10, maxWidth: 650, fontSize: 17, lineHeight: 25, color: '#EFF6FF', textAlign: 'center' },
-  composer: { width: '100%', maxWidth: 760, marginTop: 28, padding: 8, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.97)', shadowColor: '#082446', shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } },
+  composer: { width: '100%', maxWidth: 720, marginTop: 26, padding: 8, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.97)', shadowColor: '#082446', shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } },
   modes: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, padding: 3 },
   mode: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 13, borderRadius: 11 },
   modeSelected: { backgroundColor: '#E8F1FF' }, modeText: { color: '#6B7F95', fontSize: 13, fontWeight: '800' }, modeTextSelected: { color: '#0B57D0' },

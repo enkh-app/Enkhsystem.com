@@ -30,20 +30,37 @@ body {
 
 @media (min-width: 960px) {
   body {
-    padding-left: 244px;
+    padding-left: 260px;
   }
 
   #enkh-header {
     position: fixed !important;
     inset: 0 auto 0 0 !important;
-    width: 244px !important;
-    padding: 24px 18px !important;
+    width: 260px !important;
+    padding: 34px 24px 26px !important;
     border-right-width: 1px !important;
     border-bottom-width: 0 !important;
   }
 
   #enkh-brand-row {
-    margin-bottom: 32px !important;
+    margin-bottom: 38px !important;
+  }
+
+  #enkh-brand-row > a,
+  #enkh-brand-row > div:first-child {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  #enkh-folded-mark {
+    transform: scale(1.38);
+    transform-origin: left top;
+    margin-bottom: 12px !important;
+  }
+
+  #enkh-brand-copy {
+    margin-left: 1px !important;
   }
 
   #enkh-primary-nav {
@@ -63,6 +80,28 @@ body {
 
   #enkh-desktop-footer {
     display: flex !important;
+  }
+}
+
+#enkh-fold-top {
+  background: linear-gradient(100deg, #20d7ef 0%, #12a7ed 54%, #1877df 100%) !important;
+}
+
+#enkh-fold-middle {
+  background: linear-gradient(100deg, #17b7ed 0%, #157cdd 100%) !important;
+}
+
+#enkh-fold-bottom {
+  background: linear-gradient(100deg, #168fe7 0%, #154bc8 100%) !important;
+}
+
+#enkh-fold-spine {
+  background: linear-gradient(180deg, #16b9ec 0%, #1452ce 100%) !important;
+}
+
+@media (max-width: 959px) {
+  #enkh-brand-copy {
+    display: none !important;
   }
 }
 

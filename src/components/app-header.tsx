@@ -41,8 +41,13 @@ export function AppHeader({ active }: AppHeaderProps) {
     <View nativeID="enkh-header" style={styles.header}>
       <View nativeID="enkh-brand-row" style={styles.brandRow}>
         <Pressable accessibilityRole="link" accessibilityLabel="ENKH нүүр хуудас" onPress={() => router.push('/')} style={styles.brand}>
-          <View style={styles.brandMark}><Text style={styles.brandMarkText}>E</Text></View>
-          <View><Text style={styles.logo}>ENKH</Text><Text style={styles.tagline}>AI ASSISTANT</Text></View>
+          <View nativeID="enkh-folded-mark" accessibilityElementsHidden style={styles.brandMark}>
+            <View nativeID="enkh-fold-top" style={[styles.fold, styles.foldTop]} />
+            <View nativeID="enkh-fold-middle" style={[styles.fold, styles.foldMiddle]} />
+            <View nativeID="enkh-fold-bottom" style={[styles.fold, styles.foldBottom]} />
+            <View nativeID="enkh-fold-spine" style={styles.foldSpine} />
+          </View>
+          <View nativeID="enkh-brand-copy" style={styles.brandCopy}><Text style={styles.logo}>ENKH AI</Text><Text style={styles.tagline}>YOUR WORK PARTNER</Text></View>
         </Pressable>
         <View nativeID="enkh-mobile-controls" style={styles.mobileControls}><Text style={styles.language}>MN</Text><Pressable accessibilityRole="link" accessibilityLabel="Account" onPress={() => router.push('/account')} style={styles.avatar}><Text style={styles.avatarText}>Н</Text></Pressable></View>
       </View>
@@ -62,11 +67,16 @@ export function AppHeader({ active }: AppHeaderProps) {
 const styles = StyleSheet.create({
   header: { width: '100%', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, backgroundColor: '#FFFFFF', borderColor: '#DDE8F8', borderBottomWidth: 1, zIndex: 20 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 11 },
-  brandMark: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: EnkhColors.primary },
-  brandMarkText: { color: '#FFFFFF', fontSize: 21, fontWeight: '900' },
-  logo: { fontSize: 19, fontWeight: '900', letterSpacing: 3.2, color: '#102A43' },
-  tagline: { marginTop: 2, fontSize: 8, letterSpacing: 1.8, fontWeight: '800', color: '#7290B2' },
+  brand: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  brandMark: { width: 42, height: 42, position: 'relative' },
+  fold: { position: 'absolute', left: 10, width: 28, height: 9, borderRadius: 3, transform: [{ skewX: '-23deg' }] },
+  foldTop: { top: 3, backgroundColor: '#17C9ED' },
+  foldMiddle: { top: 16, width: 23, backgroundColor: '#168DE8' },
+  foldBottom: { top: 29, backgroundColor: '#1554D1' },
+  foldSpine: { position: 'absolute', left: 4, top: 5, width: 10, height: 33, borderRadius: 3, backgroundColor: '#0C66DC', transform: [{ skewY: '-18deg' }] },
+  brandCopy: { justifyContent: 'center' },
+  logo: { fontSize: 18, fontWeight: '900', letterSpacing: 2.3, color: '#102A43' },
+  tagline: { marginTop: 3, fontSize: 7, letterSpacing: 1.45, fontWeight: '800', color: '#7290B2' },
   primary: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
   navItem: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 13, borderRadius: 13 },
   navItemActive: { backgroundColor: EnkhColors.primarySoft },

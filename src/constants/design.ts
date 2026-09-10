@@ -12,4 +12,4 @@ export const EnkhColors = {
 } as const;
 
 export const EnkhRadius = { control: 13, card: 20, hero: 28 } as const;
-export const EnkhLayout = { desktopNavWidth: 244, contentMaxWidth: 1240 } as const;
+export const EnkhLayout = { desktopNavWidth: 260, contentMaxWidth: 1200 } as const;
