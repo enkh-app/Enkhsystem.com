@@ -14,9 +14,24 @@ body,
   min-height: 100%;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  background: #f7f7f5;
+  width: 100%;
+  background: #f4f8fd;
+  color: #102a43;
+  overflow-x: hidden;
+}
+
+@media (min-width: 960px) {
+  body {
+    padding-left: 244px;
+  }
 }
 
 *:focus-visible {

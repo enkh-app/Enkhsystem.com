@@ -1,53 +1,90 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { WorkspaceSyncStatus } from './workspace-sync-status';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-type AppHeaderProps = { active?: 'home' | 'chat' | 'search' | 'workspace' | 'tools' | 'account' | 'status' };
+import { WorkspaceSyncStatus } from './workspace-sync-status';
+import { EnkhColors, EnkhLayout } from '../constants/design';
+
+type ActiveRoute = 'home' | 'chat' | 'search' | 'workspace' | 'tools' | 'account' | 'status';
+type AppHeaderProps = { active?: ActiveRoute };
 
 const primary = [
-  { id: 'home', label: 'Нүүр', href: '/' },
-  { id: 'chat', label: 'Chat', href: '/chat' },
-  { id: 'search', label: 'Search', href: '/search' },
-  { id: 'workspace', label: 'Workspace', href: '/workspace' },
+  { id: 'home', label: 'Нүүр', icon: '⌂', href: '/' },
+  { id: 'chat', label: 'Chat', icon: '✦', href: '/chat' },
+  { id: 'search', label: 'Search', icon: '⌕', href: '/search' },
+  { id: 'workspace', label: 'Workspace', icon: '▣', href: '/workspace' },
+  { id: 'tools', label: 'Tools', icon: '◇', href: '/tools' },
 ] as const;
 
-const secondary = [
-  { id: 'tools', label: 'Tools', href: '/tools' },
-  { id: 'account', label: 'Account', href: '/account' },
-  { id: 'status', label: 'Status', href: '/status' },
+const utility = [
+  { id: 'status', label: 'Status', icon: '●', href: '/status' },
+  { id: 'account', label: 'Account', icon: '○', href: '/account' },
 ] as const;
 
 export function AppHeader({ active }: AppHeaderProps) {
-  const link = (item: (typeof primary)[number] | (typeof secondary)[number]) => {
+  const { width } = useWindowDimensions();
+  const desktop = width >= 960;
+  const link = (item: (typeof primary)[number] | (typeof utility)[number]) => {
     const selected = active === item.id;
     return (
-      <Pressable key={item.id} accessibilityRole="link" accessibilityLabel={item.label} accessibilityState={{ selected }} onPress={() => router.push(item.href)} style={({ pressed }) => [styles.navItem, selected && styles.navItemActive, pressed && styles.pressed]}>
+      <Pressable
+        key={item.id}
+        accessibilityRole="link"
+        accessibilityLabel={item.label}
+        accessibilityState={{ selected }}
+        onPress={() => router.push(item.href)}
+        style={({ pressed }) => [styles.navItem, selected && styles.navItemActive, pressed && styles.pressed]}>
+        <Text aria-hidden style={[styles.navIcon, selected && styles.navTextActive]}>{item.icon}</Text>
         <Text style={[styles.navText, selected && styles.navTextActive]}>{item.label}</Text>
       </Pressable>
     );
   };
 
   return (
-    <View style={styles.header}>
-      <View style={styles.topRow}>
+    <View style={[styles.header, desktop ? styles.desktopHeader : styles.mobileHeader]}>
+      <View style={[styles.brandRow, desktop && styles.desktopBrandRow]}>
         <Pressable accessibilityRole="link" accessibilityLabel="ENKH нүүр хуудас" onPress={() => router.push('/')} style={styles.brand}>
-          <Text style={styles.logo}>ENKH</Text><Text style={styles.tagline}>AI ASSISTANT</Text>
+          <View style={styles.brandMark}><Text style={styles.brandMarkText}>E</Text></View>
+          <View><Text style={styles.logo}>ENKH</Text><Text style={styles.tagline}>AI ASSISTANT</Text></View>
         </Pressable>
-        <View accessibilityLabel="Үндсэн цэс" style={styles.primary}>{primary.map(link)}</View>
+        {!desktop && <View style={styles.mobileControls}><Text style={styles.language}>MN</Text><Pressable accessibilityRole="link" accessibilityLabel="Account" onPress={() => router.push('/account')} style={styles.avatar}><Text style={styles.avatarText}>Н</Text></Pressable></View>}
       </View>
-      <View style={styles.utilityRow}>
+
+      <View accessibilityLabel="Үндсэн цэс" style={[styles.primary, !desktop && styles.mobileNav]}>{primary.map(link)}</View>
+
+      {desktop && <View style={styles.footer}>
         <WorkspaceSyncStatus />
-        <View accessibilityLabel="Tools болон system цэс" style={styles.secondary}>{secondary.map(link)}</View>
-      </View>
+        <View style={styles.divider} />
+        <Text accessibilityLabel="Хэл: Монгол" style={styles.language}>MN · Монгол</Text>
+        <View accessibilityLabel="Account болон system цэс" style={styles.utility}>{utility.map(link)}</View>
+      </View>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { width: '100%', maxWidth: 1120, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, gap: 8 },
-  topRow: { minHeight: 52, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  brand: { minWidth: 104, minHeight: 44, justifyContent: 'center' }, logo: { fontSize: 22, fontWeight: '900', letterSpacing: 4, color: '#171717' }, tagline: { marginTop: 2, fontSize: 8, letterSpacing: 2, color: '#737373' },
-  primary: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 }, utilityRow: { minHeight: 44, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderTopWidth: 1, borderTopColor: '#E5E5E1' }, secondary: { flexDirection: 'row', flexWrap: 'wrap', gap: 2 },
-  localState: { minHeight: 44, textAlignVertical: 'center', fontSize: 9, letterSpacing: 1.4, fontWeight: '900', color: '#888' },
-  navItem: { minHeight: 44, minWidth: 52, paddingHorizontal: 13, borderRadius: 13, alignItems: 'center', justifyContent: 'center' }, navItemActive: { backgroundColor: '#171717' }, navText: { fontSize: 13, fontWeight: '700', color: '#525252' }, navTextActive: { color: '#FFF' }, pressed: { opacity: 0.7 },
+  header: { backgroundColor: '#FFFFFF', borderColor: '#DDE8F8', zIndex: 20 },
+  desktopHeader: { position: 'fixed' as never, left: 0, top: 0, bottom: 0, width: EnkhLayout.desktopNavWidth, paddingHorizontal: 18, paddingVertical: 24, borderRightWidth: 1 },
+  mobileHeader: { width: '100%', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, borderBottomWidth: 1 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  desktopBrandRow: { marginBottom: 32 },
+  brand: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  brandMark: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: EnkhColors.primary },
+  brandMarkText: { color: '#FFFFFF', fontSize: 21, fontWeight: '900' },
+  logo: { fontSize: 19, fontWeight: '900', letterSpacing: 3.2, color: '#102A43' },
+  tagline: { marginTop: 2, fontSize: 8, letterSpacing: 1.8, fontWeight: '800', color: '#7290B2' },
+  primary: { gap: 6 },
+  mobileNav: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
+  navItem: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 13, borderRadius: 13 },
+  navItemActive: { backgroundColor: EnkhColors.primarySoft },
+  navIcon: { width: 20, textAlign: 'center', color: '#6783A3', fontSize: 18, fontWeight: '800' },
+  navText: { color: '#486581', fontSize: 15, fontWeight: '700' },
+  navTextActive: { color: EnkhColors.primary },
+  footer: { marginTop: 'auto', gap: 9 },
+  divider: { height: 1, marginVertical: 5, backgroundColor: '#E6EEF8' },
+  utility: { gap: 4 },
+  language: { minHeight: 38, textAlignVertical: 'center', paddingHorizontal: 12, color: '#627D98', fontSize: 13, fontWeight: '800' },
+  mobileControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: EnkhColors.primary },
+  avatarText: { color: '#FFFFFF', fontWeight: '900' },
+  pressed: { opacity: 0.68 },
 });

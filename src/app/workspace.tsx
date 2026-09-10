@@ -120,9 +120,9 @@ export default function WorkspaceScreen() {
 }
 
 const styles = StyleSheet.create({
-  page:{flex:1,backgroundColor:'#F7F7F5'}, content:{width:'100%',maxWidth:960,alignSelf:'center',paddingHorizontal:20,paddingTop:38,paddingBottom:56},
+  page:{flex:1,backgroundColor:'#F4F8FD'}, content:{width:'100%',maxWidth:960,alignSelf:'center',paddingHorizontal:20,paddingTop:38,paddingBottom:56},
   headingRow:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:16},headingText:{flex:1,minWidth:240},title:{fontSize:40,fontWeight:'900',color:'#171717'},subtitle:{marginTop:8,fontSize:15,lineHeight:22,color:'#686868'},
-  newButton:{minHeight:48,justifyContent:'center',paddingHorizontal:18,borderRadius:14,backgroundColor:'#171717'},newButtonText:{color:'#FFF',fontWeight:'800'},
+  newButton:{minHeight:48,justifyContent:'center',paddingHorizontal:18,borderRadius:14,backgroundColor:'#0B57D0'},newButtonText:{color:'#FFF',fontWeight:'800'},
   notice:{marginTop:24,padding:18,borderRadius:16,backgroundColor:'#FFF4E3',borderWidth:1,borderColor:'#E9C98B'},noticeTitle:{fontWeight:'800',color:'#6F4A13'},noticeText:{marginTop:5,color:'#765A31'},
   cloudCard:{marginTop:24,padding:18,borderRadius:16,backgroundColor:'#FFF',borderWidth:1,borderColor:'#D6E5D8'},cloudActions:{marginTop:14,flexDirection:'row',flexWrap:'wrap',gap:8},warning:{marginTop:12,padding:10,borderRadius:10,backgroundColor:'#FFF4E3',color:'#6F4A13',fontSize:12},
   backupCard:{marginTop:16,padding:18,borderRadius:16,backgroundColor:'#F3F0FF',borderWidth:1,borderColor:'#D8D0F1'},backupMeta:{marginTop:6,fontSize:12,color:'#6D6580'},restoreButton:{alignSelf:'flex-start',minHeight:44,justifyContent:'center',marginTop:14,paddingHorizontal:14,borderRadius:11,backgroundColor:'#312A45'},restoreButtonText:{color:'#FFF',fontSize:13,fontWeight:'800'},restoreConfirm:{marginTop:14,gap:8},

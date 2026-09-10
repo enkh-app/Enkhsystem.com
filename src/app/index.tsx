@@ -1,77 +1,78 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getAuthState } from '../api';
 import { AppHeader } from '../components/app-header';
+import { EnkhColors, EnkhLayout } from '../constants/design';
+import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
 import { loadWorkspace, WorkspaceSession } from '../workspace-store';
 
 type Mode = 'chat' | 'search';
+const hero = require('../../assets/images/enkh-mountain-hero.png');
+const examples = ['Өнөөдрийн ажлаа төлөвлөе', 'Монголын тухай мэдээлэл хайх', '520 м² дээр 8% нэмэх'];
 
 export default function HomeScreen() {
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<Mode>('chat');
   const [recent, setRecent] = useState<WorkspaceSession[]>([]);
+  const [firstName, setFirstName] = useState('');
+  const [sync, setSync] = useState<WorkspaceSyncSnapshot>(backgroundWorkspaceSync.getSnapshot());
 
-  useEffect(() => { setRecent(loadWorkspace().state.sessions.slice(0, 3)); }, []);
+  useEffect(() => {
+    setRecent(loadWorkspace().state.sessions.slice(0, 4));
+    void getAuthState().then((auth) => setFirstName(auth.authenticated ? (auth.user?.name || '').trim().split(/\s+/)[0] : '')).catch(() => {});
+    const unsubscribe = backgroundWorkspaceSync.subscribe(() => setSync(backgroundWorkspaceSync.getSnapshot()));
+    return () => { unsubscribe(); };
+  }, []);
 
-  const submit = () => {
-    const value = input.trim();
-    if (!value) return;
-
-    router.push({
-      pathname: mode === 'chat' ? '/chat' : '/search',
-      params: mode === 'chat' ? { prompt: value } : { q: value },
-    });
+  const submit = (value = input) => {
+    const prompt = value.trim();
+    if (!prompt) return;
+    router.push({ pathname: mode === 'chat' ? '/chat' : '/search', params: mode === 'chat' ? { prompt } : { q: prompt } });
   };
 
   return (
     <SafeAreaView style={styles.page}>
       <AppHeader active="home" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>ENKH ACTION PLATFORM</Text>
-          <Text accessibilityRole="header" style={styles.title}>Асуух, хайх, тооцоолох — нэг дор.</Text>
-          <Text style={styles.subtitle}>Монгол хэлээр асуултаа бич. ENKH тохирох үйлдлийг бодит production API-аар гүйцэтгэнэ.</Text>
-
-          <View style={styles.composer}>
-            <View style={styles.modes}>
-              <ModeButton label="AI-аас асуух" selected={mode === 'chat'} onPress={() => setMode('chat')} />
-              <ModeButton label="Вэбээс хайх" selected={mode === 'search'} onPress={() => setMode('search')} />
+        <ImageBackground source={hero} imageStyle={styles.heroImage} style={styles.hero}>
+          <View style={styles.heroShade}>
+            <Text style={styles.eyebrow}>ENKH · ТАНЫ ӨДӨР ТУТМЫН AI</Text>
+            <Text accessibilityRole="header" style={styles.title}>{firstName ? `Сайн байна уу, ${firstName}!` : 'Сайн байна уу!'}</Text>
+            <Text style={styles.subtitle}>Асуух, хайх, тооцоолох ажлаа нэг тайван орчноос эхлүүлээрэй.</Text>
+            <View style={styles.composer}>
+              <View style={styles.modes}>
+                <ModeButton label="ENKH-ээс асуух" selected={mode === 'chat'} onPress={() => setMode('chat')} />
+                <ModeButton label="Вэбээс хайх" selected={mode === 'search'} onPress={() => setMode('search')} />
+              </View>
+              <TextInput accessibilityLabel="ENKH-д өгөх асуулт" multiline value={input} onChangeText={setInput} placeholder={mode === 'chat' ? 'Юу мэдэхийг хүсэж байна вэ?' : 'Юу хайх вэ?'} placeholderTextColor="#71839A" style={styles.input} />
+              <Pressable accessibilityRole="button" accessibilityLabel={mode === 'chat' ? 'Асуулт илгээх' : 'Хайлт хийх'} disabled={!input.trim()} onPress={() => submit()} style={({ pressed }) => [styles.submit, !input.trim() && styles.disabled, pressed && styles.pressed]}><Text style={styles.submitText}>{mode === 'chat' ? 'Асуух' : 'Хайх'} →</Text></Pressable>
             </View>
-            <TextInput
-              accessibilityLabel="ENKH-д өгөх асуулт"
-              multiline
-              value={input}
-              onChangeText={setInput}
-              placeholder={mode === 'chat' ? 'Жишээ: ENKH систем гэж юу вэ?' : 'Жишээ: Өнөөдрийн технологийн мэдээ'}
-              placeholderTextColor="#8A8A8A"
-              style={styles.input}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={mode === 'chat' ? 'Асуулт илгээх' : 'Хайлт хийх'}
-              disabled={!input.trim()}
-              onPress={submit}
-              style={({ pressed }) => [styles.submit, !input.trim() && styles.disabled, pressed && styles.pressed]}
-            >
-              <Text style={styles.submitText}>{mode === 'chat' ? 'Асуух →' : 'Хайх →'}</Text>
-            </Pressable>
+            <View style={styles.chips}>{examples.map((example) => <Pressable key={example} accessibilityRole="button" onPress={() => { setMode(example.includes('хайх') ? 'search' : 'chat'); setInput(example); }} style={styles.chip}><Text style={styles.chipText}>{example}</Text></Pressable>)}</View>
           </View>
-        </View>
+        </ImageBackground>
 
+        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Юу хийх вэ?</Text><Text style={styles.sectionCaption}>Таны ENKH workspace</Text></View>
         <View style={styles.cards}>
-          <Capability title="Chat" description="ENKH AI-аас Монгол хэлээр шууд хариулт авна." action="Ярилцах" onPress={() => router.push('/chat')} />
-          <Capability title="Search" description="Шинэ, гадаад мэдээллийг вэбээс хайж, эх сурвалжтай хариулт авна." action="Хайх" onPress={() => router.push('/search')} />
-          <Capability title="Tools" description="Тооцоолол болон бодитоор ажиллаж байгаа хэрэгслүүд." action="Нээх" onPress={() => router.push('/tools')} />
+          <Feature icon="✦" title="Chat" description="Ойлгомжтой, үргэлжилсэн яриа" onPress={() => router.push('/chat')} />
+          <Feature icon="⌕" title="Search" description="Эх сурвалжтай бодит хайлт" onPress={() => router.push('/search')} />
+          <Feature icon="∑" title="Calculation" description="Хэмжээ, хувь, тооцоолол" onPress={() => router.push('/tools/calculation')} />
+          <Feature icon="▣" title="Workspace" description="Таны хадгалсан ажлууд" onPress={() => router.push('/workspace')} />
+          <Feature icon="◇" title="Tools" description="Бодитоор ажиллах хэрэгслүүд" onPress={() => router.push('/tools')} />
         </View>
 
-        <View style={styles.controlRow}>
+        <View style={styles.dashboardRow}>
           <View style={styles.recentPanel}>
-            <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Recent Workspace</Text><Pressable accessibilityRole="link" onPress={() => router.push('/workspace')}><Text style={styles.sectionLink}>Бүгдийг харах →</Text></Pressable></View>
-            {recent.length ? recent.map((session) => <Pressable key={session.id} accessibilityRole="link" onPress={() => router.push({ pathname: '/workspace' })} style={styles.recentItem}><Text style={styles.recentKind}>{session.type.toUpperCase()}</Text><Text numberOfLines={1} style={styles.recentTitle}>{session.title}</Text></Pressable>) : <Text style={styles.emptyText}>Chat, Search эсвэл Calculation ашиглахад local history энд харагдана.</Text>}
+            <View style={styles.panelHeading}><View><Text style={styles.panelEyebrow}>RECENT WORK</Text><Text style={styles.panelTitle}>Сүүлийн ажлууд</Text></View><Pressable accessibilityRole="link" onPress={() => router.push('/workspace')}><Text style={styles.link}>Бүгдийг харах →</Text></Pressable></View>
+            {recent.length ? recent.map((session) => <Pressable key={session.id} accessibilityRole="link" onPress={() => router.push('/workspace')} style={styles.recentItem}><View style={styles.recentIcon}><Text style={styles.recentIconText}>{session.type === 'chat' ? '✦' : session.type === 'search' ? '⌕' : '∑'}</Text></View><View style={styles.recentText}><Text numberOfLines={1} style={styles.recentTitle}>{session.title}</Text><Text style={styles.recentMeta}>{session.type.toUpperCase()} · {new Date(session.updatedAt).toLocaleDateString()}</Text></View></Pressable>) : <View style={styles.empty}><Text style={styles.emptyTitle}>Workspace хоосон байна</Text><Text style={styles.emptyText}>Chat, Search эсвэл Calculation ашиглахад бодит history энд харагдана.</Text></View>}
           </View>
-          <View style={styles.systemPanel}><Text style={styles.sectionTitle}>Account / System</Text><Text style={styles.systemState}>Local-only workspace</Text><Text style={styles.emptyText}>Cloud sync одоогоор идэвхгүй. Таны history энэ browser дээр хадгалагдана.</Text><Pressable accessibilityRole="link" onPress={() => router.push('/status')}><Text style={styles.sectionLink}>System status →</Text></Pressable></View>
+
+          <View style={styles.sideColumn}>
+            <View style={styles.summaryCard}><Text style={styles.panelEyebrow}>WORKSPACE</Text><Text style={styles.summaryTitle}>{workspaceSyncLabel(sync.phase)}</Text><Text style={styles.summaryText}>{sync.revision > 0 ? 'Cloud workspace-тэй холбогдсон.' : 'Local workspace бэлэн.'}</Text><Pressable accessibilityRole="link" onPress={() => router.push('/workspace')}><Text style={styles.link}>Workspace нээх →</Text></Pressable></View>
+            <View style={styles.quickCard}><Text style={styles.panelEyebrow}>QUICK TOOLS</Text><Pressable accessibilityRole="link" onPress={() => router.push('/tools/calculation')} style={styles.quickLink}><Text style={styles.quickIcon}>∑</Text><Text style={styles.quickText}>Calculation</Text><Text style={styles.quickArrow}>→</Text></Pressable><Pressable accessibilityRole="link" onPress={() => router.push('/search')} style={styles.quickLink}><Text style={styles.quickIcon}>⌕</Text><Text style={styles.quickText}>Source Search</Text><Text style={styles.quickArrow}>→</Text></Pressable></View>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -79,49 +80,38 @@ export default function HomeScreen() {
 }
 
 function ModeButton({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={[styles.mode, selected && styles.modeSelected]}>
-      <Text style={[styles.modeText, selected && styles.modeTextSelected]}>{label}</Text>
-    </Pressable>
-  );
+  return <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={[styles.mode, selected && styles.modeSelected]}><Text style={[styles.modeText, selected && styles.modeTextSelected]}>{label}</Text></Pressable>;
 }
 
-function Capability({ title, description, action, onPress }: { title: string; description: string; action: string; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="link" onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardDescription}>{description}</Text>
-      <Text style={styles.cardAction}>{action} →</Text>
-    </Pressable>
-  );
+function Feature({ icon, title, description, onPress }: { icon: string; title: string; description: string; onPress: () => void }) {
+  return <Pressable accessibilityRole="link" onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}><View style={styles.cardIcon}><Text style={styles.cardIconText}>{icon}</Text></View><Text style={styles.cardTitle}>{title}</Text><Text style={styles.cardDescription}>{description}</Text><Text style={styles.cardAction}>Нээх →</Text></Pressable>;
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#F7F7F5' },
-  content: { width: '100%', maxWidth: 1120, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 48, paddingBottom: 56 },
-  hero: { width: '100%', maxWidth: 820, alignSelf: 'center', alignItems: 'center' },
-  eyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 2.5, color: '#666' },
-  title: { marginTop: 18, fontSize: 46, lineHeight: 54, fontWeight: '900', color: '#171717', textAlign: 'center' },
-  subtitle: { marginTop: 16, maxWidth: 680, fontSize: 17, lineHeight: 26, color: '#666', textAlign: 'center' },
-  composer: { width: '100%', marginTop: 34, padding: 10, borderRadius: 24, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#DDD' },
-  modes: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, padding: 4 },
-  mode: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 12 },
-  modeSelected: { backgroundColor: '#EFEFEB' },
-  modeText: { color: '#777', fontSize: 13, fontWeight: '700' },
-  modeTextSelected: { color: '#171717' },
-  input: { minHeight: 100, maxHeight: 220, paddingHorizontal: 14, paddingVertical: 14, fontSize: 17, lineHeight: 25, color: '#171717', textAlignVertical: 'top' },
-  submit: { minHeight: 48, alignSelf: 'flex-end', justifyContent: 'center', paddingHorizontal: 22, borderRadius: 15, backgroundColor: '#171717' },
-  submitText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
-  disabled: { opacity: 0.3 },
-  pressed: { opacity: 0.7 },
-  cards: { marginTop: 54, flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  card: { flexGrow: 1, flexBasis: 260, minHeight: 180, padding: 24, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E4E1' },
-  cardTitle: { fontSize: 21, fontWeight: '800', color: '#171717' },
-  cardDescription: { flex: 1, marginTop: 12, fontSize: 15, lineHeight: 23, color: '#686868' },
-  cardAction: { marginTop: 24, fontSize: 14, fontWeight: '800', color: '#171717' },
-  controlRow: { marginTop: 18, flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  recentPanel: { flexGrow: 2, flexBasis: 420, padding: 22, borderRadius: 20, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E4E1' },
-  systemPanel: { flexGrow: 1, flexBasis: 260, padding: 22, borderRadius: 20, backgroundColor: '#EEEDEA' },
-  sectionHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, sectionTitle: { fontSize: 17, fontWeight: '900', color: '#171717' }, sectionLink: { minHeight: 44, textAlignVertical: 'center', fontSize: 13, fontWeight: '800', color: '#343434' },
-  recentItem: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: '#ECECE8' }, recentKind: { width: 58, fontSize: 9, letterSpacing: 1, fontWeight: '900', color: '#777' }, recentTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: '#303030' }, emptyText: { marginTop: 10, fontSize: 13, lineHeight: 20, color: '#707070' }, systemState: { alignSelf: 'flex-start', marginTop: 14, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9, overflow: 'hidden', backgroundColor: '#FFF4D8', fontSize: 11, fontWeight: '900', color: '#725413' },
+  page: { flex: 1, backgroundColor: EnkhColors.canvas },
+  content: { width: '100%', maxWidth: EnkhLayout.contentMaxWidth, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 22, paddingBottom: 60 },
+  hero: { width: '100%', minHeight: 500, overflow: 'hidden', borderRadius: 28, justifyContent: 'center', backgroundColor: '#0A3A72' },
+  heroImage: { borderRadius: 28 },
+  heroShade: { flex: 1, minHeight: 500, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 44, backgroundColor: 'rgba(5,35,76,0.36)' },
+  eyebrow: { fontSize: 12, fontWeight: '900', letterSpacing: 2.2, color: '#DCEAFF' },
+  title: { marginTop: 13, fontSize: 46, lineHeight: 55, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' },
+  subtitle: { marginTop: 10, maxWidth: 650, fontSize: 17, lineHeight: 25, color: '#EFF6FF', textAlign: 'center' },
+  composer: { width: '100%', maxWidth: 760, marginTop: 28, padding: 8, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.97)', shadowColor: '#082446', shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 10 } },
+  modes: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, padding: 3 },
+  mode: { minHeight: 40, justifyContent: 'center', paddingHorizontal: 13, borderRadius: 11 },
+  modeSelected: { backgroundColor: '#E8F1FF' }, modeText: { color: '#6B7F95', fontSize: 13, fontWeight: '800' }, modeTextSelected: { color: '#0B57D0' },
+  input: { minHeight: 80, maxHeight: 180, paddingHorizontal: 14, paddingVertical: 12, fontSize: 17, lineHeight: 25, color: '#102A43', textAlignVertical: 'top' },
+  submit: { minHeight: 48, alignSelf: 'flex-end', justifyContent: 'center', paddingHorizontal: 22, borderRadius: 14, backgroundColor: EnkhColors.primary }, submitText: { color: '#FFFFFF', fontWeight: '900', fontSize: 15 },
+  chips: { maxWidth: 780, marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }, chip: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.88)' }, chipText: { color: '#1D4E89', fontSize: 13, fontWeight: '700' },
+  sectionHeading: { marginTop: 38, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }, sectionTitle: { fontSize: 25, fontWeight: '900', color: '#102A43' }, sectionCaption: { fontSize: 13, fontWeight: '700', color: '#829AB1' },
+  cards: { marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  card: { flexGrow: 1, flexBasis: 180, minHeight: 180, padding: 19, borderRadius: 20, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DFEAF7', shadowColor: '#24527A', shadowOpacity: 0.06, shadowRadius: 15, shadowOffset: { width: 0, height: 6 } },
+  cardIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EAF2FF' }, cardIconText: { color: '#0B57D0', fontSize: 19, fontWeight: '900' }, cardTitle: { marginTop: 15, fontSize: 18, fontWeight: '900', color: '#102A43' }, cardDescription: { flex: 1, marginTop: 7, fontSize: 14, lineHeight: 21, color: '#627D98' }, cardAction: { marginTop: 14, color: '#0B57D0', fontSize: 13, fontWeight: '900' },
+  dashboardRow: { marginTop: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 14 }, recentPanel: { flexGrow: 2, flexBasis: 520, padding: 22, borderRadius: 22, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DFEAF7' }, sideColumn: { flexGrow: 1, flexBasis: 280, gap: 14 }, summaryCard: { padding: 22, borderRadius: 22, backgroundColor: '#0B57D0' }, quickCard: { padding: 20, borderRadius: 22, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DFEAF7' },
+  panelHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, panelEyebrow: { fontSize: 10, fontWeight: '900', letterSpacing: 1.6, color: '#7B96B3' }, panelTitle: { marginTop: 5, fontSize: 20, fontWeight: '900', color: '#102A43' }, link: { minHeight: 44, textAlignVertical: 'center', color: '#0B57D0', fontSize: 13, fontWeight: '900' },
+  recentItem: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: '#EDF3F9' }, recentIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFF5FD' }, recentIconText: { color: '#0B57D0', fontWeight: '900' }, recentText: { flex: 1 }, recentTitle: { fontSize: 15, fontWeight: '800', color: '#243B53' }, recentMeta: { marginTop: 4, fontSize: 10, letterSpacing: 0.7, fontWeight: '800', color: '#829AB1' },
+  empty: { minHeight: 150, alignItems: 'center', justifyContent: 'center', padding: 18 }, emptyTitle: { color: '#243B53', fontSize: 17, fontWeight: '900' }, emptyText: { marginTop: 7, maxWidth: 420, textAlign: 'center', color: '#829AB1', fontSize: 14, lineHeight: 21 },
+  summaryTitle: { marginTop: 12, color: '#FFFFFF', fontSize: 21, fontWeight: '900' }, summaryText: { marginTop: 7, color: '#D9E9FF', fontSize: 14, lineHeight: 21 },
+  quickLink: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 10, borderTopWidth: 1, borderTopColor: '#EDF3F9' }, quickIcon: { width: 24, color: '#0B57D0', fontSize: 17, fontWeight: '900' }, quickText: { flex: 1, color: '#243B53', fontSize: 14, fontWeight: '800' }, quickArrow: { color: '#829AB1' },
+  disabled: { opacity: 0.45 }, pressed: { opacity: 0.72 },
 });
