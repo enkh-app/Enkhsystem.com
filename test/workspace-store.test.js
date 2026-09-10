@@ -70,6 +70,15 @@ test('editable draft updates its workspace entry without creating a duplicate', 
   assert.equal(updated.entries.length, 1); assert.equal(updated.entries[0].content, 'edited'); assert.equal(updated.entries[0].structuredResult.content, 'edited');
 });
 
+test('document edit updates canonical structured result without destructive migration', () => {
+  let state = store.exports.emptyWorkspace(); const created = store.exports.createSession(state, 'action', 'document'); state = created.state;
+  state = store.exports.addEntry(state, { id: 'doc', sessionId: created.session.id, role: 'assistant', type: 'action', content: 'legacy', actionId: 'document', structuredResult: { type: 'document_draft', content: 'legacy' } });
+  const document = { version: 1, title: 'Шинэ', documentType: 'report', date: '2026-09-10', metadata: [], sections: [{ heading: 'Агуулга', level: 1, blocks: [{ type: 'paragraph', text: 'Зассан' }] }] };
+  const updated = store.exports.updateEntryDocument(state, 'doc', '# Шинэ', document);
+  assert.equal(updated.entries[0].content, '# Шинэ'); assert.deepEqual(updated.entries[0].structuredResult.document, document);
+  assert.equal(updated.entries[0].structuredResult.exportCapabilities.docx, true);
+});
+
 test('backup inspection is read-only and reports only validated aggregate metadata', () => {
   const storage = memoryStorage();
   let state = store.exports.emptyWorkspace();

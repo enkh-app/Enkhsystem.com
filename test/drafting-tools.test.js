@@ -17,7 +17,14 @@ test('drafting UI has validation, loading, retry, editable copy and safe message
   assert.match(source, /Засварлах ноорог/); assert.match(source, /clipboard\.writeText/);
   assert.match(source, /Автоматаар илгээгдээгүй/); assert.match(source, /backgroundWorkspaceSync\.schedule/);
   assert.match(source, /Workspace-д хадгалж чадсангүй/);
+  assert.match(source, /DOCX татах/); assert.match(source, /documentAfterEdit/); assert.match(source, /downloadDocx/);
   assert.ok(source.indexOf('saveWorkspace(next)') < source.indexOf('backgroundWorkspaceSync.schedule(next)'));
+});
+
+test('document export is lazy-loaded and workspace routes can reopen document drafts', () => {
+  const source = read('src/components/drafting-tool.tsx');
+  assert.match(source, /import\('\.\.\/document-docx'\)/); assert.match(source, /useLocalSearchParams/); assert.match(source, /entriesFor/);
+  assert.match(read('src/app/workspace.tsx'), /sessionId: session\.id/);
 });
 
 test('tools advertise only real drafting capabilities and reminder remains honest', () => {
