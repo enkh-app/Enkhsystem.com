@@ -163,6 +163,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
   }
 
   if (actionId === 'search') return <Redirect href="/search" />;
+  if (actionId === 'reminder') return <Redirect href="/action-reminder" />;
   if (actionId === 'text' || actionId === 'message' || actionId === 'document') return <DraftingTool kind={actionId} />;
   if (actionId !== 'calculation') return <ComingSoonAction title={action.title} />;
 

@@ -175,7 +175,7 @@ export function actionIdForSession(state: WorkspaceState, sessionId: string): st
 export function workspaceSessionLabel(state: WorkspaceState, session: WorkspaceSession): string {
   if (session.type === 'chat') return 'Chat';
   if (session.type === 'search') return 'Хайлт';
-  const labels: Record<string, string> = { calculation: 'Тооцоолол', text: 'Текст', message: 'Мессеж', document: 'Баримт бичиг' };
+  const labels: Record<string, string> = { calculation: 'Тооцоолол', text: 'Текст', message: 'Мессеж', document: 'Баримт бичиг', reminder: 'Сануулга' };
   return labels[actionIdForSession(state, session.id) || ''] || 'Ажил';
 }
 

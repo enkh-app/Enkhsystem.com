@@ -27,10 +27,10 @@ test('document export is lazy-loaded and workspace routes can reopen document dr
   assert.match(read('src/app/workspace.tsx'), /sessionId: session\.id/);
 });
 
-test('tools advertise only real drafting capabilities and reminder remains honest', () => {
+test('tools advertise real drafting capabilities and durable reminder', () => {
   const tools = read('src/app/actions.tsx');
   for (const label of ['Текст боловсруулах','Мессеж бэлтгэх','Баримт бичиг']) assert.match(tools, new RegExp(label));
-  assert.match(tools, /Сануулга/); assert.match(tools, /Тун удахгүй/);
-  assert.match(read('src/app/action-reminder.tsx'), /durable scheduler/);
+  assert.match(tools, /Сануулга/); assert.match(tools, /action-reminder/);
+  assert.match(read('src/app/action-reminder.tsx'), /listReminders/);
   assert.doesNotMatch(read('src/action-engine.ts'), /Мессеж илгээх/);
 });

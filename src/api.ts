@@ -71,6 +71,18 @@ export class ActionApiError extends Error {
 export type AuthUser = { accountId?: string; name: string; email: string; picture: string };
 export type AuthState = { authenticated: boolean; admin: boolean; user?: AuthUser };
 
+export type ReminderStatus = 'scheduled' | 'processing' | 'delivered' | 'failed' | 'cancelled';
+export type Reminder = { id: string; title: string; note: string; scheduledAt: string; timezone: string; status: ReminderStatus; deliveryChannel: 'in_app'; createdAt: string; updatedAt: string; deliveredAt: string | null; retryCount: number; version: number };
+async function reminderRequest(path = '', options: RequestInit = {}): Promise<any> {
+  const response = await fetch(`${ENKH_API_URL}/api/reminders${path}`, { ...options, credentials: 'include', headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers } });
+  if (!response.ok) throw new AdminApiError(response.status);
+  return response.json();
+}
+export async function listReminders(): Promise<Reminder[]> { return (await reminderRequest()).reminders; }
+export async function createReminder(input: { title: string; note: string; scheduledAt: string; timezone: string; deliveryChannel: 'in_app' }): Promise<Reminder> { return (await reminderRequest('', { method: 'POST', body: JSON.stringify(input) })).reminder; }
+export async function updateReminder(id: string, input: { title: string; note: string; scheduledAt: string; timezone: string; deliveryChannel: 'in_app' }): Promise<Reminder> { return (await reminderRequest(`/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(input) })).reminder; }
+export async function cancelReminder(id: string): Promise<Reminder> { return (await reminderRequest(`/${encodeURIComponent(id)}`, { method: 'DELETE' })).reminder; }
+
 export async function getAuthState(): Promise<AuthState> {
   const response = await fetch(`${ENKH_API_URL}/auth/me`, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
   if (response.status === 401) return { authenticated: false, admin: false };

@@ -10,9 +10,8 @@ const available = [
   { title: 'Текст боловсруулах', description: 'Засах, богиносгох, дэлгэрүүлэх, хураангуйлах, орчуулах.', route: '/action/text', label: 'Боловсруулах' },
   { title: 'Мессеж бэлтгэх', description: 'Өнгө аястай editable draft бэлтгэнэ; автоматаар илгээхгүй.', route: '/action-message', label: 'Ноорог бэлтгэх' },
   { title: 'Баримт бичиг', description: 'Бүтэцтэй editable баримтын draft бэлтгэнэ.', route: '/action-document', label: 'Ноорог бэлтгэх' },
+  { title: 'Сануулга', description: 'Browser хаалттай байсан ч хадгалагдах, UTC-д суурилсан ENKH сануулагч.', route: '/action-reminder', label: 'Товлох' },
 ] as const;
-
-const upcoming = ['Сануулга'];
 
 export default function ActionsScreen() {
   return (
@@ -38,10 +37,6 @@ export default function ActionsScreen() {
           ))}
         </View>
 
-        <Text accessibilityRole="header" style={styles.upcomingTitle}>Тун удахгүй</Text>
-        <View style={styles.upcomingList}>
-          {upcoming.map((item) => <View key={item} style={styles.upcomingCard}><Text style={styles.upcomingName}>{item}</Text><Text style={styles.upcomingBadge}>Найдвартай сануулга, мэдэгдлийн үйлчилгээ бэлэн болмогц идэвхжинэ.</Text></View>)}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

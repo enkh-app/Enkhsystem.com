@@ -13,9 +13,9 @@ test('home quick tools reflect the four real productivity tools without duplicat
   assert.doesNotMatch(home, /Source Search|quickText}>Calculation/);
 });
 
-test('tools page groups only productive tools as active and keeps reminder honest', () => {
+test('tools page groups productive tools including durable reminder', () => {
   const tools = read('src/app/actions.tsx');
-  assert.match(tools, /Ажиллаж байгаа/); assert.match(tools, /Тун удахгүй/);
+  assert.match(tools, /Ажиллаж байгаа/); assert.match(tools, /action-reminder/);
   assert.doesNotMatch(tools, /AI мэдлэг|Вэб хайлт|coming soon/i);
 });
 

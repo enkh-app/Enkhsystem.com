@@ -13,13 +13,13 @@ test('production API URL is public and development fallback remains local', () =
   assert.match(api, /__DEV__/);
 });
 
-test('core UI uses the three live backend actions', () => {
+test('core UI uses live backend actions and durable reminders', () => {
   const api = read('src/api.ts');
   const actions = read('src/app/actions.tsx');
   assert.match(api, /runAction\('knowledge'/);
   assert.match(api, /runAction\('search'/);
   assert.match(actions, /tools\/calculation/);
-  assert.match(actions, /Тун удахгүй/);
+  assert.match(actions, /action-reminder/);
 });
 
 test('updated core screens contain no common UTF-8 mojibake markers', () => {
