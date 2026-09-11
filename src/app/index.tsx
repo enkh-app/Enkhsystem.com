@@ -8,12 +8,14 @@ import { enkhStructuredData, SeoHead } from '../components/seo-head';
 import { EnkhColors, EnkhLayout } from '../constants/design';
 import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
 import { loadWorkspace, workspaceSessionLabel, WorkspaceSession, WorkspaceState } from '../workspace-store';
+import { useI18n } from '../i18n';
 
 type Mode = 'chat' | 'search';
 const hero = require('../../assets/images/enkh-mountain-hero.png');
 const examples = ['Өнөөдрийн ажлаа төлөвлөе', 'Монголын тухай мэдээлэл хайх', '520 м² дээр 8% нэмэх'];
 
 export default function HomeScreen() {
+  const { t } = useI18n();
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<Mode>('chat');
   const [recent, setRecent] = useState<WorkspaceSession[]>([]);
@@ -47,8 +49,8 @@ export default function HomeScreen() {
         <ImageBackground source={hero} imageStyle={styles.heroImage} style={styles.hero}>
           <View style={styles.heroShade}>
             <Text style={styles.eyebrow}>ENKH · ТАНЫ ӨДӨР ТУТМЫН AI</Text>
-            <Text accessibilityRole="header" style={styles.title}>Сайн байна уу!</Text>
-            <Text style={styles.subtitle}>Асуух, хайх, тооцоолох ажлаа нэг тайван орчноос эхлүүлээрэй.</Text>
+            <Text accessibilityRole="header" style={styles.title}>{t('home.greeting')}</Text>
+            <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
             <View style={styles.composer}>
               <View style={styles.modes}>
                 <ModeButton label="ENKH-ээс асуух" selected={mode === 'chat'} onPress={() => setMode('chat')} />
@@ -62,16 +64,16 @@ export default function HomeScreen() {
         </ImageBackground>
 
         <View style={styles.aboutCard}>
-          <Text accessibilityRole="header" style={styles.aboutTitle}>ENKH гэж юу вэ?</Text>
-          <Text style={styles.aboutText}>ENKH буюу Enkh AI нь өдөр тутмын асуулт, эх сурвалжтай вэб хайлт, хувь ба хэмжих нэгжийн тооцоо, текст боловсруулах, мессеж болон бүтэцтэй баримт бичиг бэлтгэхэд тусалдаг Монгол хэл дээрх AI бүтээгдэхүүн юм.</Text>
+          <Text accessibilityRole="header" style={styles.aboutTitle}>{t('home.aboutTitle')}</Text>
+          <Text style={styles.aboutText}>{t('home.about')}</Text>
         </View>
 
-        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Юу хийх вэ?</Text><Text style={styles.sectionCaption}>Таны ENKH workspace</Text></View>
+        <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{t('home.what')}</Text><Text style={styles.sectionCaption}>{t('home.workspace')}</Text></View>
         <View style={styles.cards}>
-          <Feature icon="✦" title="Chat" description="Ойлгомжтой, үргэлжилсэн яриа" onPress={() => router.push('/chat')} />
-          <Feature icon="⌕" title="Хайлт" description="Эх сурвалжтай бодит хайлт" onPress={() => router.push('/search')} />
-          <Feature icon="▣" title="Workspace" description="Таны хадгалсан ажлууд" onPress={() => router.push('/workspace')} />
-          <Feature icon="◇" title="Tools" description="Бодитоор ажиллах хэрэгслүүд" onPress={() => router.push('/tools')} />
+          <Feature icon="✦" title={t('feature.chat')} description={t('feature.chatDesc')} onPress={() => router.push('/chat')} />
+          <Feature icon="⌕" title={t('feature.search')} description={t('feature.searchDesc')} onPress={() => router.push('/search')} />
+          <Feature icon="▣" title={t('feature.workspace')} description={t('feature.workspaceDesc')} onPress={() => router.push('/workspace')} />
+          <Feature icon="◇" title={t('feature.tools')} description={t('feature.toolsDesc')} onPress={() => router.push('/tools')} />
         </View>
 
         <View style={styles.dashboardRow}>

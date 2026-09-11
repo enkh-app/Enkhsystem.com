@@ -8,8 +8,10 @@ import { AppHeader } from '../components/app-header';
 import { SeoHead } from '../components/seo-head';
 import { addEntry, contextFor, createSession, emptyWorkspace, entriesFor, loadWorkspace, saveWorkspace, WorkspaceEntry, WorkspaceState } from '../workspace-store';
 import { backgroundWorkspaceSync } from '../workspace-sync';
+import { useI18n } from '../i18n';
 
 export default function ChatScreen() {
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ prompt?: string; sessionId?: string }>();
   const initialPrompt = typeof params.prompt === 'string' ? params.prompt : '';
   const requestedSessionId = typeof params.sessionId === 'string' ? params.sessionId : '';
@@ -89,15 +91,15 @@ export default function ChatScreen() {
       <SeoHead title="ENKH Chat — Монгол AI туслах" description="ENKH AI-тай Монгол хэлээр үргэлжилсэн яриа хийж, асуултдаа ойлгомжтой хариулт аваарай." path="/chat" />
       <AppHeader active="chat" />
       <KeyboardAvoidingView style={styles.layout} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.intro}><View><Text accessibilityRole="header" style={styles.title}>ENKH Chat</Text><Text style={styles.subtitle}>{sessionId ? 'Энэ conversation browser дээр автоматаар хадгалагдана.' : 'Шинэ conversation эхлүүлэх асуултаа бичнэ үү.'}</Text></View>{sessionId ? <Pressable accessibilityRole="button" onPress={() => router.replace('/chat')} style={styles.newChat}><Text style={styles.newChatText}>+ Шинэ chat</Text></Pressable> : null}</View>
+        <View style={styles.intro}><View><Text accessibilityRole="header" style={styles.title}>{t('chat.title')}</Text><Text style={styles.subtitle}>{t('chat.subtitle')}</Text></View>{sessionId ? <Pressable accessibilityRole="button" onPress={() => router.replace('/chat')} style={styles.newChat}><Text style={styles.newChatText}>+ {t('chat.new')}</Text></Pressable> : null}</View>
         {!!storageWarning && <Text accessibilityLiveRegion="polite" style={styles.warning}>{storageWarning}</Text>}
         <ScrollView ref={scrollRef} style={styles.messages} contentContainerStyle={styles.messageContent} keyboardShouldPersistTaps="handled">
-          {!messages.length && <View style={[styles.row, styles.enkhRow]}><View style={[styles.bubble, styles.enkhBubble]}><Text style={styles.message}>Сайн байна уу. Би ENKH AI. Танд юугаар туслах вэ?</Text></View></View>}
+          {!messages.length && <View style={[styles.row, styles.enkhRow]}><View style={[styles.bubble, styles.enkhBubble]}><Text style={styles.message}>{t('chat.empty')}</Text></View></View>}
           {messages.map((message) => <View key={message.id} style={[styles.row, message.role === 'user' ? styles.userRow : styles.enkhRow]}><View style={[styles.bubble, message.role === 'user' ? styles.userBubble : styles.enkhBubble]}><Text style={[styles.message, message.role === 'user' && styles.userMessage]}>{message.content}</Text></View></View>)}
-          {loading && <View accessibilityLiveRegion="polite" style={styles.thinking}><ActivityIndicator color="#171717" /><Text style={styles.thinkingText}>ENKH бодож байна…</Text></View>}
+          {loading && <View accessibilityLiveRegion="polite" style={styles.thinking}><ActivityIndicator color="#171717" /><Text style={styles.thinkingText}>{t('chat.sending')}</Text></View>}
           {!!failedText && <View accessibilityLiveRegion="assertive" style={styles.failure}><Text style={styles.failureText}>{failureKind === 'validation' ? 'Хүсэлтийн мэдээллийг шалгаад дахин оролдоно уу.' : 'Сүлжээ эсвэл үйлчилгээний түр алдаа гарлаа.'} Таны асуулт history-д хадгалагдсан.</Text><Pressable accessibilityRole="button" accessibilityLabel="Сүүлийн асуултыг дахин оролдох" onPress={() => void send(failedText, true)} style={styles.retry}><Text style={styles.retryText}>Дахин оролдох</Text></Pressable></View>}
         </ScrollView>
-        <View style={styles.composer}><TextInput accessibilityLabel="Chat асуулт" editable={!loading} multiline value={input} onChangeText={setInput} onKeyPress={(event) => { if (Platform.OS === 'web' && event.nativeEvent.key === 'Enter' && !(event.nativeEvent as typeof event.nativeEvent & { shiftKey?: boolean }).shiftKey) { event.preventDefault(); void send(); } }} onSubmitEditing={() => void send()} placeholder="ENKH-ээс юм асуух…" placeholderTextColor="#888" style={styles.input} submitBehavior="submit"/><Pressable accessibilityRole="button" accessibilityLabel="Асуулт илгээх" disabled={!input.trim() || loading} onPress={() => void send()} style={({ pressed }) => [styles.send, (!input.trim() || loading) && styles.disabled, pressed && styles.pressed]}><Text style={styles.sendText}>Илгээх ↑</Text></Pressable></View>
+        <View style={styles.composer}><TextInput accessibilityLabel={t('chat.placeholder')} editable={!loading} multiline value={input} onChangeText={setInput} onKeyPress={(event) => { if (Platform.OS === 'web' && event.nativeEvent.key === 'Enter' && !(event.nativeEvent as typeof event.nativeEvent & { shiftKey?: boolean }).shiftKey) { event.preventDefault(); void send(); } }} onSubmitEditing={() => void send()} placeholder={t('chat.placeholder')} placeholderTextColor="#888" style={styles.input} submitBehavior="submit"/><Pressable accessibilityRole="button" accessibilityLabel={t('chat.send')} disabled={!input.trim() || loading} onPress={() => void send()} style={({ pressed }) => [styles.send, (!input.trim() || loading) && styles.disabled, pressed && styles.pressed]}><Text style={styles.sendText}>{t('chat.send')} ↑</Text></Pressable></View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

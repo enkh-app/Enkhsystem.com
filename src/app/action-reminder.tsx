@@ -7,11 +7,13 @@ import { AdminApiError, cancelReminder, createReminder, listReminders, Reminder,
 import { DEFAULT_TIMEZONE, localDateTimeToUtc, parseSafeNaturalReminder } from '../reminder-time';
 import { addEntry, createSession, loadWorkspace, saveWorkspace } from '../workspace-store';
 import { backgroundWorkspaceSync } from '../workspace-sync';
+import { useI18n } from '../i18n';
 
 const labels = { scheduled: 'Товлогдсон', processing: 'Хүргэж байна', delivered: 'Хүргэгдсэн', failed: 'Хүргэлт амжилтгүй', cancelled: 'Цуцлагдсан' } as const;
 function tomorrow() { const date = new Date(); date.setDate(date.getDate() + 1); return date.toISOString().slice(0, 10); }
 
 export default function ReminderActionScreen() {
+  const { t } = useI18n();
   const [natural,setNatural]=useState(''); const [title,setTitle]=useState(''); const [note,setNote]=useState('');
   const [date,setDate]=useState(''); const [time,setTime]=useState('10:00'); const [timezone,setTimezone]=useState(DEFAULT_TIMEZONE);
   const [items,setItems]=useState<Reminder[]>([]); const [editing,setEditing]=useState<string|null>(null); const [busy,setBusy]=useState(false); const [notice,setNotice]=useState('');
@@ -27,7 +29,7 @@ export default function ReminderActionScreen() {
   const edit=(r:Reminder)=>{const local=new Date(r.scheduledAt);setEditing(r.id);setTitle(r.title);setNote(r.note);setDate(local.toLocaleDateString('en-CA',{timeZone:r.timezone}));setTime(local.toLocaleTimeString('en-GB',{timeZone:r.timezone,hour:'2-digit',minute:'2-digit'}));setTimezone(r.timezone);setNotice('Хуучин хуваарь зөвхөн шинэ утгыг хадгалсны дараа солигдоно.');};
   const cancel=async(id:string)=>{setBusy(true);try{await cancelReminder(id);setNotice('Сануулагч цуцлагдлаа. Хүргэгдэхгүй.');await refresh();}catch{setNotice('Цуцалж чадсангүй. Дахин оролдоно уу.');}finally{setBusy(false);}};
   return <SafeAreaView style={s.page}><SeoHead title="ENKH Сануулагч" description="Тогтвортой хадгалагдах ENKH сануулагч." path="/action-reminder" noIndex/><AppHeader active="tools"/><ScrollView contentContainerStyle={s.content}>
-    <Text accessibilityRole="header" style={s.h1}>Сануулагч</Text><Text style={s.sub}>Огноо, цагийг нягтлаад хадгална. v1 хүргэлт ENKH дотор харагдана.</Text>
+    <Text accessibilityRole="header" style={s.h1}>{t('reminder.title')}</Text><Text style={s.sub}>{t('reminder.subtitle')}</Text>
     <View style={s.card}><Text style={s.label}>Байгалийн хэлээр бичих</Text><TextInput value={natural} onChangeText={setNatural} placeholder="Маргааш 10:00-д Мягмартай уулзахыг сануул." style={s.input}/><Pressable onPress={parse} style={s.secondary}><Text style={s.secondaryText}>Утгыг задлах</Text></Pressable>
       <Text style={s.label}>Гарчиг / сануулах зүйл</Text><TextInput value={title} onChangeText={setTitle} maxLength={160} style={s.input}/><Text style={s.label}>Нэмэлт тэмдэглэл</Text><TextInput value={note} onChangeText={setNote} maxLength={2000} multiline style={[s.input,s.note]}/>
       <View style={s.row}><View style={s.field}><Text style={s.label}>Огноо (YYYY-MM-DD)</Text><TextInput value={date} onChangeText={setDate} style={s.input}/></View><View style={s.field}><Text style={s.label}>Цаг (HH:mm)</Text><TextInput value={time} onChangeText={setTime} style={s.input}/></View></View>

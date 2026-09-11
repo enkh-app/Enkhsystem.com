@@ -15,7 +15,7 @@ test('home quick tools reflect the four real productivity tools without duplicat
 
 test('tools page groups productive tools including durable reminder', () => {
   const tools = read('src/app/actions.tsx');
-  assert.match(tools, /Ажиллаж байгаа/); assert.match(tools, /action-reminder/);
+  assert.match(tools, /tools\.active/); assert.match(tools, /action-reminder/);
   assert.doesNotMatch(tools, /AI мэдлэг|Вэб хайлт|coming soon/i);
 });
 
@@ -42,13 +42,13 @@ test('cloud and backup technical metadata are secondary while safety actions rem
 test('account and drafting screens use concise consistent user language', () => {
   const account = read('src/app/account.tsx'); const drafting = read('src/components/drafting-tool.tsx');
   assert.doesNotMatch(account, /SIGNED IN|LOCAL WORKSPACE/);
-  assert.match(account, /workspaceSyncLabel/); assert.match(account, /Нэвтрэх/); assert.match(account, /Гарах/);
+  assert.match(account, /syncLabelKey/); assert.match(account, /account\.signIn/); assert.match(account, /account\.signOut/);
   assert.match(drafting, /Үүсгэж байна…/); assert.match(drafting, /Дахин үүсгэх/); assert.match(drafting, /БЭЛЭН НООРОГ/); assert.match(drafting, /Дахин оролдох/);
 });
 
 test('primary navigation is concise and public admin remains absent', () => {
   const header = read('src/components/app-header.tsx');
-  for (const label of ['Нүүр','Chat','Хайлт','Workspace','Tools']) assert.match(header, new RegExp(`label: '${label}'`));
+  for (const key of ['nav.home','nav.chat','nav.search','nav.workspace','nav.tools']) assert.match(header, new RegExp(key.replace('.', '\\.')));
   assert.doesNotMatch(header, /\/admin|Admin/);
   assert.match(header, /minHeight: 44/);
 });

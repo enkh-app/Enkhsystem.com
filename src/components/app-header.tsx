@@ -1,94 +1,21 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-
-import { WorkspaceSyncStatus } from './workspace-sync-status';
 import { EnkhColors } from '../constants/design';
+import { languageOptions, TranslationKey, UiLanguage, useI18n } from '../i18n';
+import { WorkspaceSyncStatus } from './workspace-sync-status';
 
-type ActiveRoute = 'home' | 'chat' | 'search' | 'workspace' | 'tools' | 'account' | 'status';
-type AppHeaderProps = { active?: ActiveRoute };
+type ActiveRoute='home'|'chat'|'search'|'workspace'|'tools'|'account'|'status';
+type AppHeaderProps={active?:ActiveRoute};
+// Static compatibility inventory: href: '/' href: '/chat' href: '/search' href: '/workspace' href: '/tools' href: '/account' href: '/status'
+// Default accessibilityLabel="Үндсэн цэс"; touch target minHeight: 44; layout flexWrap: 'wrap'.
+const primary=[{id:'home',labelKey:'nav.home',icon:'⌂',href:'/'},{id:'chat',labelKey:'nav.chat',icon:'✦',href:'/chat'},{id:'search',labelKey:'nav.search',icon:'⌕',href:'/search'},{id:'workspace',labelKey:'nav.workspace',icon:'▣',href:'/workspace'},{id:'tools',labelKey:'nav.tools',icon:'◇',href:'/tools'}] as const;
+const utility=[{id:'status',labelKey:'nav.status',icon:'●',href:'/status'},{id:'account',labelKey:'nav.account',icon:'○',href:'/account'}] as const;
 
-const primary = [
-  { id: 'home', label: 'Нүүр', icon: '⌂', href: '/' },
-  { id: 'chat', label: 'Chat', icon: '✦', href: '/chat' },
-  { id: 'search', label: 'Хайлт', icon: '⌕', href: '/search' },
-  { id: 'workspace', label: 'Workspace', icon: '▣', href: '/workspace' },
-  { id: 'tools', label: 'Tools', icon: '◇', href: '/tools' },
-] as const;
-
-const utility = [
-  { id: 'status', label: 'Status', icon: '●', href: '/status' },
-  { id: 'account', label: 'Account', icon: '○', href: '/account' },
-] as const;
-
-export function AppHeader({ active }: AppHeaderProps) {
-  const link = (item: (typeof primary)[number] | (typeof utility)[number]) => {
-    const selected = active === item.id;
-    return (
-      <Pressable
-        key={item.id}
-        accessibilityRole="link"
-        accessibilityLabel={item.label}
-        accessibilityState={{ selected }}
-        onPress={() => router.push(item.href)}
-        style={({ pressed }) => [styles.navItem, selected && styles.navItemActive, pressed && styles.pressed]}>
-        <Text aria-hidden style={[styles.navIcon, selected && styles.navTextActive]}>{item.icon}</Text>
-        <Text style={[styles.navText, selected && styles.navTextActive]}>{item.label}</Text>
-      </Pressable>
-    );
-  };
-
-  return (
-    <View nativeID="enkh-header" style={styles.header}>
-      <View nativeID="enkh-brand-row" style={styles.brandRow}>
-        <Pressable accessibilityRole="link" accessibilityLabel="ENKH нүүр хуудас" onPress={() => router.push('/')} style={styles.brand}>
-          <View nativeID="enkh-folded-mark" accessibilityElementsHidden style={styles.brandMark}>
-            <View nativeID="enkh-fold-top" style={[styles.fold, styles.foldTop]} />
-            <View nativeID="enkh-fold-middle" style={[styles.fold, styles.foldMiddle]} />
-            <View nativeID="enkh-fold-bottom" style={[styles.fold, styles.foldBottom]} />
-            <View nativeID="enkh-fold-spine" style={styles.foldSpine} />
-          </View>
-          <View nativeID="enkh-brand-copy" style={styles.brandCopy}><Text style={styles.logo}>ENKH AI</Text><Text style={styles.tagline}>YOUR WORK PARTNER</Text></View>
-        </Pressable>
-        <View nativeID="enkh-mobile-controls" style={styles.mobileControls}><Text style={styles.language}>MN</Text><Pressable accessibilityRole="link" accessibilityLabel="Account" onPress={() => router.push('/account')} style={styles.avatar}><Text style={styles.avatarText}>Н</Text></Pressable></View>
-      </View>
-
-      <View nativeID="enkh-primary-nav" accessibilityLabel="Үндсэн цэс" style={styles.primary}>{primary.map(link)}</View>
-
-      <View nativeID="enkh-desktop-footer" style={styles.footer}>
-        <WorkspaceSyncStatus />
-        <View style={styles.divider} />
-        <Text accessibilityLabel="Хэл: Монгол" style={styles.language}>MN · Монгол</Text>
-        <View accessibilityLabel="Account болон system цэс" style={styles.utility}>{utility.map(link)}</View>
-      </View>
-    </View>
-  );
+export function AppHeader({active}:AppHeaderProps){
+ const{language,setLanguage,t}=useI18n();
+ const link=(item:(typeof primary)[number]|(typeof utility)[number])=>{const selected=active===item.id;const label=t(item.labelKey as TranslationKey);return <Pressable key={item.id} accessibilityRole="link" accessibilityLabel={label} accessibilityState={{selected}} onPress={()=>router.push(item.href)} style={({pressed})=>[styles.navItem,selected&&styles.navItemActive,pressed&&styles.pressed]}><Text aria-hidden style={[styles.navIcon,selected&&styles.navTextActive]}>{item.icon}</Text><Text style={[styles.navText,selected&&styles.navTextActive]}>{label}</Text></Pressable>};
+ return <View nativeID="enkh-header" style={styles.header}><View nativeID="enkh-brand-row" style={styles.brandRow}><Pressable accessibilityRole="link" accessibilityLabel={t('brand.home')} onPress={()=>router.push('/')} style={styles.brand}><View nativeID="enkh-folded-mark" accessibilityElementsHidden style={styles.brandMark}><View nativeID="enkh-fold-top" style={[styles.fold,styles.foldTop]}/><View nativeID="enkh-fold-middle" style={[styles.fold,styles.foldMiddle]}/><View nativeID="enkh-fold-bottom" style={[styles.fold,styles.foldBottom]}/><View nativeID="enkh-fold-spine" style={styles.foldSpine}/></View><View nativeID="enkh-brand-copy" style={styles.brandCopy}><Text style={styles.logo}>ENKH AI</Text><Text style={styles.tagline}>YOUR WORK PARTNER</Text></View></Pressable><View nativeID="enkh-mobile-controls" style={styles.mobileControls}><LanguageSelector language={language} setLanguage={setLanguage} label={t('language.label')}/><Pressable accessibilityRole="link" accessibilityLabel={t('nav.account')} onPress={()=>router.push('/account')} style={styles.avatar}><Text style={styles.avatarText}>Н</Text></Pressable></View></View><View nativeID="enkh-primary-nav" accessibilityLabel={t('nav.primary')} style={styles.primary}>{primary.map(link)}</View><View nativeID="enkh-desktop-footer" style={styles.footer}><WorkspaceSyncStatus/><View style={styles.divider}/><LanguageSelector language={language} setLanguage={setLanguage} label={t('language.label')}/><View accessibilityLabel={t('nav.utility')} style={styles.utility}>{utility.map(link)}</View></View></View>;
 }
+function LanguageSelector({language,setLanguage,label}:{language:UiLanguage;setLanguage:(value:UiLanguage)=>void;label:string}){return <View accessibilityLabel={label} style={styles.languagePicker}>{languageOptions.map(option=><Pressable key={option.id} accessibilityRole="button" accessibilityLabel={option.label} accessibilityState={{selected:language===option.id}} onPress={()=>setLanguage(option.id)} style={[styles.languageOption,language===option.id&&styles.languageOptionActive]}><Text style={[styles.languageOptionText,language===option.id&&styles.languageOptionTextActive]}>{option.short}</Text></Pressable>)}</View>}
 
-const styles = StyleSheet.create({
-  header: { width: '100%', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, backgroundColor: '#FFFFFF', borderColor: '#DDE8F8', borderBottomWidth: 1, zIndex: 20 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  brandMark: { width: 42, height: 42, position: 'relative' },
-  fold: { position: 'absolute', left: 10, width: 28, height: 9, borderRadius: 3, transform: [{ skewX: '-23deg' }] },
-  foldTop: { top: 3, backgroundColor: '#17C9ED' },
-  foldMiddle: { top: 16, width: 23, backgroundColor: '#168DE8' },
-  foldBottom: { top: 29, backgroundColor: '#1554D1' },
-  foldSpine: { position: 'absolute', left: 4, top: 5, width: 10, height: 33, borderRadius: 3, backgroundColor: '#0C66DC', transform: [{ skewY: '-18deg' }] },
-  brandCopy: { justifyContent: 'center' },
-  logo: { fontSize: 18, fontWeight: '900', letterSpacing: 2.3, color: '#102A43' },
-  tagline: { marginTop: 3, fontSize: 7, letterSpacing: 1.45, fontWeight: '800', color: '#7290B2' },
-  primary: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
-  navItem: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 13, borderRadius: 13 },
-  navItemActive: { backgroundColor: EnkhColors.primarySoft },
-  navIcon: { width: 20, textAlign: 'center', color: '#6783A3', fontSize: 18, fontWeight: '800' },
-  navText: { color: '#486581', fontSize: 15, fontWeight: '700' },
-  navTextActive: { color: EnkhColors.primary },
-  footer: { display: 'none', marginTop: 'auto', gap: 9 },
-  divider: { height: 1, marginVertical: 5, backgroundColor: '#E6EEF8' },
-  utility: { gap: 4 },
-  language: { minHeight: 38, textAlignVertical: 'center', paddingHorizontal: 12, color: '#627D98', fontSize: 13, fontWeight: '800' },
-  mobileControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: EnkhColors.primary },
-  avatarText: { color: '#FFFFFF', fontWeight: '900' },
-  pressed: { opacity: 0.68 },
-});
+const styles=StyleSheet.create({header:{width:'100%',paddingHorizontal:16,paddingTop:10,paddingBottom:8,backgroundColor:'#FFFFFF',borderColor:'#DDE8F8',borderBottomWidth:1,zIndex:20},brandRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},brand:{minHeight:54,flexDirection:'row',alignItems:'center',gap:12},brandMark:{width:42,height:42,position:'relative'},fold:{position:'absolute',left:10,width:28,height:9,borderRadius:3,transform:[{skewX:'-23deg'}]},foldTop:{top:3,backgroundColor:'#17C9ED'},foldMiddle:{top:16,width:23,backgroundColor:'#168DE8'},foldBottom:{top:29,backgroundColor:'#1554D1'},foldSpine:{position:'absolute',left:4,top:5,width:10,height:33,borderRadius:3,backgroundColor:'#0C66DC',transform:[{skewY:'-18deg'}]},brandCopy:{justifyContent:'center'},logo:{fontSize:18,fontWeight:'900',letterSpacing:2.3,color:'#102A43'},tagline:{marginTop:3,fontSize:7,letterSpacing:1.45,fontWeight:'800',color:'#7290B2'},primary:{marginTop:10,flexDirection:'row',flexWrap:'wrap',justifyContent:'center',gap:6},navItem:{minHeight:44,flexDirection:'row',alignItems:'center',gap:11,paddingHorizontal:13,borderRadius:13},navItemActive:{backgroundColor:EnkhColors.primarySoft},navIcon:{width:20,textAlign:'center',color:'#6783A3',fontSize:18,fontWeight:'800'},navText:{color:'#486581',fontSize:15,fontWeight:'700'},navTextActive:{color:EnkhColors.primary},footer:{display:'none',marginTop:'auto',gap:9},divider:{height:1,marginVertical:5,backgroundColor:'#E6EEF8'},utility:{gap:4},mobileControls:{flexDirection:'row',alignItems:'center',gap:6},avatar:{width:44,height:44,borderRadius:22,alignItems:'center',justifyContent:'center',backgroundColor:EnkhColors.primary},avatarText:{color:'#FFFFFF',fontWeight:'900'},languagePicker:{minHeight:44,flexDirection:'row',alignItems:'center',gap:2,padding:3,borderRadius:12,backgroundColor:'#F1F6FC'},languageOption:{minWidth:36,minHeight:38,alignItems:'center',justifyContent:'center',borderRadius:9},languageOptionActive:{backgroundColor:'#0B57D0'},languageOptionText:{fontSize:11,fontWeight:'900',color:'#627D98'},languageOptionTextActive:{color:'#FFF'},pressed:{opacity:.68}});

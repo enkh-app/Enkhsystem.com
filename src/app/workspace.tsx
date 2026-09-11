@@ -8,8 +8,10 @@ import { SeoHead } from '../components/seo-head';
 import { AdminApiError, getAuthState, getCloudWorkspace, importCloudWorkspace, syncCloudWorkspace } from '../api';
 import { actionIdForSession, BackupInspection, clearWorkspace, deleteSession, inspectWorkspaceBackup, loadWorkspace, replaceWorkspaceSafely, restoreWorkspaceBackup, saveWorkspace, workspaceSessionLabel, WorkspaceSession, WorkspaceState } from '../workspace-store';
 import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
+import { useI18n } from '../i18n';
 
 export default function WorkspaceScreen() {
+  const { t } = useI18n();
   const [state, setState] = useState<WorkspaceState>({ version: 1, sessions: [], entries: [] });
   const [issue, setIssue] = useState<'unavailable' | 'corrupt' | undefined>();
   const [confirming, setConfirming] = useState('');
@@ -91,8 +93,8 @@ export default function WorkspaceScreen() {
       <AppHeader active="workspace" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headingRow}>
-          <View style={styles.headingText}><Text accessibilityRole="header" style={styles.title}>Workspace</Text><Text style={styles.subtitle}>Таны хадгалсан яриа, хайлт, тооцоолол болон бэлтгэсэн нооргууд.</Text></View>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/chat')} style={styles.newButton}><Text style={styles.newButtonText}>+ Шинэ chat</Text></Pressable>
+          <View style={styles.headingText}><Text accessibilityRole="header" style={styles.title}>{t('workspace.title')}</Text><Text style={styles.subtitle}>{t('workspace.subtitle')}</Text></View>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/chat')} style={styles.newButton}><Text style={styles.newButtonText}>{t('workspace.newChat')}</Text></Pressable>
         </View>
 
         {issue && <View style={styles.notice}><Text style={styles.noticeTitle}>{issue === 'corrupt' ? 'History өгөгдөл уншигдсангүй' : 'Browser storage ашиглах боломжгүй'}</Text><Text style={styles.noticeText}>ENKH хоосон workspace-ээр аюулгүй үргэлжилж байна.</Text></View>}

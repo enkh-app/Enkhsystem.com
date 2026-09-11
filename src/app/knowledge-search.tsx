@@ -8,8 +8,10 @@ import { AppHeader } from '../components/app-header';
 import { SeoHead } from '../components/seo-head';
 import { addEntry, createSession, emptyWorkspace, entriesFor, loadWorkspace, saveWorkspace, WorkspaceState } from '../workspace-store';
 import { backgroundWorkspaceSync } from '../workspace-sync';
+import { useI18n } from '../i18n';
 
 export default function KnowledgeSearchScreen() {
+  const { t } = useI18n();
   const params = useLocalSearchParams<{ q?: string; sessionId?: string }>();
   const initialQuery = typeof params.q === 'string' ? params.q : '';
   const requestedSessionId = typeof params.sessionId === 'string' ? params.sessionId : '';
@@ -72,11 +74,11 @@ export default function KnowledgeSearchScreen() {
 
   return (
     <SafeAreaView style={styles.page}><SeoHead title="ENKH Хайлт — Эх сурвалжтай вэб хайлт" description="Вэбээс мэдээлэл хайж, ENKH-ийн нэгтгэсэн хариу болон ашигласан эх сурвалжуудыг хамтад нь аваарай." path="/search" /><AppHeader active="search" /><ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>Эх сурвалжтай вэб хайлт</Text><Text style={styles.subtitle}>{sessionId ? 'Хадгалсан хайлтын үр дүн. Дахин нээхэд API дахин дуудагдахгүй.' : 'Бодит вэбээс хайж, хариу болон эх сурвалжийг session-д хадгална.'}</Text></View>
+      <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>{t('search.title')}</Text><Text style={styles.subtitle}>{sessionId ? t('search.saved') : t('search.subtitle')}</Text></View>
       {!!storageWarning && <Text style={styles.warning}>{storageWarning}</Text>}
-      <View style={styles.searchBox}><TextInput accessibilityLabel="Вэб хайлтын асуулт" editable={!loading} value={query} onChangeText={setQuery} onSubmitEditing={() => void search()} placeholder="Юу хайх вэ?" placeholderTextColor="#888" returnKeyType="search" style={styles.input}/><Pressable accessibilityRole="button" accessibilityLabel="Вэбээс хайх" disabled={!query.trim() || loading} onPress={() => void search()} style={({pressed})=>[styles.button,(!query.trim()||loading)&&styles.disabled,pressed&&styles.pressed]}><Text style={styles.buttonText}>Хайх</Text></Pressable></View>
-      {loading&&<View accessibilityLiveRegion="polite" style={styles.state}><ActivityIndicator color="#171717"/><Text style={styles.stateText}>Вэбээс хайж байна…</Text></View>}
-      {!!error&&<View accessibilityLiveRegion="assertive" style={styles.error}><Text style={styles.errorTitle}>Хайлт амжилтгүй</Text><Text style={styles.errorText}>{error}</Text></View>}
+      <View style={styles.searchBox}><TextInput accessibilityLabel={t('search.placeholder')} editable={!loading} value={query} onChangeText={setQuery} onSubmitEditing={() => void search()} placeholder={t('search.placeholder')} placeholderTextColor="#888" returnKeyType="search" style={styles.input}/><Pressable accessibilityRole="button" accessibilityLabel={t('search.button')} disabled={!query.trim() || loading} onPress={() => void search()} style={({pressed})=>[styles.button,(!query.trim()||loading)&&styles.disabled,pressed&&styles.pressed]}><Text style={styles.buttonText}>{t('search.button')}</Text></Pressable></View>
+      {loading&&<View accessibilityLiveRegion="polite" style={styles.state}><ActivityIndicator color="#171717"/><Text style={styles.stateText}>{t('search.loading')}</Text></View>}
+      {!!error&&<View accessibilityLiveRegion="assertive" style={styles.error}><Text style={styles.errorTitle}>{t('search.failed')}</Text><Text style={styles.errorText}>{error}</Text></View>}
       {!!answer&&<View style={styles.results}><View style={styles.answerCard}><Text style={styles.label}>ENKH ХАРИУЛТ</Text><Text style={styles.answer}>{answer}</Text></View><Text accessibilityRole="header" style={styles.sourcesTitle}>Эх сурвалж ({sources.length})</Text>{sources.length?sources.map((source,index)=><Pressable key={`${source.url}-${index}`} accessibilityRole="link" accessibilityLabel={`${source.title} эх сурвалжийг нээх`} onPress={()=>void Linking.openURL(source.url)} style={({pressed})=>[styles.source,pressed&&styles.pressed]}><View style={styles.sourceText}><Text numberOfLines={2} style={styles.sourceTitle}>{source.title||source.source||'Эх сурвалж'}</Text><Text numberOfLines={1} style={styles.sourceUrl}>{source.source||source.url}</Text></View><Text style={styles.arrow}>↗</Text></Pressable>):<Text style={styles.noSources}>Энэ хариунд тусдаа эх сурвалж ирсэнгүй.</Text>}</View>}
     </ScrollView></SafeAreaView>
   );

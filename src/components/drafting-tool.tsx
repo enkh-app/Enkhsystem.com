@@ -9,6 +9,7 @@ import { documentAfterEdit, documentFromResult, modelToEditableText, StructuredD
 import { addEntry, createSession, entriesFor, loadWorkspace, makeId, saveWorkspace, updateEntryContent, updateEntryDocument } from '../workspace-store';
 import { AppHeader } from './app-header';
 import { SeoHead } from './seo-head';
+import { useI18n } from '../i18n';
 
 type DraftKind = 'text' | 'message' | 'document';
 type DraftResult = { type: string; content: string; document?: unknown; editable: boolean; sent?: boolean; exportCapabilities?: { docx: boolean; pdf: boolean }; [key: string]: unknown };
@@ -21,6 +22,7 @@ const tones = [['professional', 'Мэргэжлийн'], ['friendly', 'Найр�
 const documentTypes = [['letter', 'Албан бичиг'], ['proposal', 'Санал'], ['report', 'Тайлан'], ['memo', 'Тэмдэглэл'], ['other', 'Бусад']] as const;
 
 export function DraftingTool({ kind }: { kind: DraftKind }) {
+  const { t } = useI18n();
   const { sessionId } = useLocalSearchParams<{ sessionId?: string }>();
   const [operation, setOperation] = useState('polish');
   const [tone, setTone] = useState('professional');
@@ -50,10 +52,10 @@ export function DraftingTool({ kind }: { kind: DraftKind }) {
   }, [kind, sessionId]);
 
   const labels = useMemo(() => ({
-    text: ['Текст боловсруулах', 'Текстээ бодитоор засаж, богиносгож, дэлгэрүүлж, хураангуйлж эсвэл орчуулна.'],
-    message: ['Мессеж бэлтгэх', 'Зорилго, нөхцөл болон өнгө аясаар editable мессежийн ноорог бэлтгэнэ.'],
-    document: ['Баримт бичиг бэлтгэх', 'Төрөл, зорилго, нөхцөлд тохирсон бүтэцтэй editable ноорог бэлтгэнэ.'],
-  }[kind]), [kind]);
+    text: [t('draft.textTitle'), t('draft.textSubtitle')],
+    message: [t('draft.messageTitle'), t('draft.messageSubtitle')],
+    document: [t('draft.documentTitle'), t('draft.documentSubtitle')],
+  }[kind]), [kind, t]);
 
   const input = kind === 'text'
     ? { operation, text, targetLanguage, instructions }

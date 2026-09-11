@@ -28,9 +28,9 @@ test('document export is lazy-loaded and workspace routes can reopen document dr
 });
 
 test('tools advertise real drafting capabilities and durable reminder', () => {
-  const tools = read('src/app/actions.tsx');
-  for (const label of ['Текст боловсруулах','Мессеж бэлтгэх','Баримт бичиг']) assert.match(tools, new RegExp(label));
-  assert.match(tools, /Сануулга/); assert.match(tools, /action-reminder/);
+  const tools = read('src/app/actions.tsx'); const i18n = read('src/i18n.tsx');
+  for (const key of ['tool.text','tool.message','tool.document','tool.reminder']) assert.match(tools, new RegExp(key.replace('.', '\\.')));
+  assert.match(i18n, /Текст боловсруулах/); assert.match(tools, /action-reminder/);
   assert.match(read('src/app/action-reminder.tsx'), /listReminders/);
   assert.doesNotMatch(read('src/action-engine.ts'), /Мессеж илгээх/);
 });

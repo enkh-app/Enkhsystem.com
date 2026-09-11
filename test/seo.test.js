@@ -46,7 +46,8 @@ test('public routes have unique canonical metadata and private routes are noinde
 
 test('home has crawlable factual ENKH and Enkh AI product copy', () => {
   const home = read('src/app/index.tsx');
-  assert.match(home, /ENKH гэж юу вэ\?/);
-  assert.match(home, /ENKH буюу Enkh AI/);
-  for (const capability of ['вэб хайлт', 'тооцоо', 'текст боловсруулах', 'мессеж', 'баримт бичиг']) assert.match(home, new RegExp(capability, 'i'));
+  assert.match(home, /home\.aboutTitle/);
+  assert.match(read('src/i18n.tsx'), /ENKH буюу Enkh AI/);
+  const i18n = read('src/i18n.tsx');
+  for (const capability of ['вэб хайлт', 'тооцоо', 'текст боловсруулах', 'мессеж', 'баримт бичиг']) assert.match(i18n, new RegExp(capability, 'i'));
 });

@@ -29,11 +29,11 @@ test('static export renders one deterministic navigation tree before CSS breakpo
 
 test('navigation remains accessible and account is separated from primary links', () => {
   const header = read('src/components/app-header.tsx');
-  assert.match(header, /accessibilityLabel="Үндсэн цэс"/);
-  assert.match(header, /accessibilityState=\{\{ selected \}\}/);
-  assert.match(header, /const utility = \[/);
-  assert.match(header, /href: '\/account'/);
-  assert.match(header, /minHeight: 44/);
+  assert.match(header, /nav\.primary/);
+  assert.match(header, /accessibilityState=\{\{\s*selected\s*\}\}/);
+  assert.match(header, /const utility\s*=\s*\[/);
+  assert.match(header, /href:'\/account'/);
+  assert.match(header, /minHeight:44|minHeight: 44/);
 });
 
 test('home dashboard uses real workspace and sync state without public account identity', () => {
@@ -47,10 +47,10 @@ test('home dashboard uses real workspace and sync state without public account i
 
 test('home visual target includes prompt, examples, primary experiences and honest empty state', () => {
   const home = read('src/app/index.tsx');
-  for (const label of ['Chat', 'Хайлт', 'Workspace', 'Tools']) assert.match(home, new RegExp(`title="${label}"`));
+  for (const key of ['feature.chat','feature.search','feature.workspace','feature.tools']) assert.match(home, new RegExp(key.replace('.', '\\.')));
   assert.match(home, /enkh-mountain-hero\.png/);
   assert.match(home, /examples\.map/);
-  assert.match(home, /Workspace хоосон байна/);
+  assert.match(read('src/i18n.tsx'), /Workspace хоосон байна/);
   assert.match(home, /accessibilityRole="header"/);
 });
 
