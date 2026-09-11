@@ -22,6 +22,7 @@ import { addEntry, createSession, entriesFor, loadWorkspace, saveWorkspace } fro
 import { backgroundWorkspaceSync } from '../../workspace-sync';
 import { ComingSoonAction } from '../../components/coming-soon-action';
 import { WorkspaceSyncStatus } from '../../components/workspace-sync-status';
+import { useI18n } from '../../i18n';
 import { DraftingTool } from '../../components/drafting-tool';
 
 export function generateStaticParams() {
@@ -29,6 +30,7 @@ export function generateStaticParams() {
 }
 
 export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId } = {}) {
+  const { t } = useI18n();
   const { id, sessionId: requestedSessionId } = useLocalSearchParams<{ id?: string; sessionId?: string }>();
 
   const actionId = (fixedActionId || id || 'custom') as ActionId;
@@ -185,7 +187,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
 
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>
-              ТООЦООЛОЛ
+              {t('calc.title').toUpperCase()}
             </Text>
 
             <Text style={styles.headerStatus}>
@@ -255,7 +257,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
             />
 
             <Text style={styles.exampleTitle}>
-              Жишээ
+              {t('calc.example')}
             </Text>
 
             <View style={styles.examples}>
@@ -284,7 +286,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
 
               <View>
                 <Text style={styles.label}>
-                  Гүйцэтгэх
+                  {t('calc.run')}
                 </Text>
 
                 <Text style={styles.sectionDescription}>
@@ -307,7 +309,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
                   <ActivityIndicator color="#FFFFFF" />
 
                   <Text style={styles.runButtonText}>
-                    ENKH ажиллаж байна...
+                    {t('calc.running')}
                   </Text>
                 </>
               ) : (
@@ -356,7 +358,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
 
                   <View>
                     <Text style={styles.calculationTitle}>
-                      Тооцооллын үр дүн
+                      {t('calc.result')}
                     </Text>
 
                     <Text style={styles.calculationSubtitle}>
@@ -369,7 +371,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
 
                   <View style={styles.calculationRow}>
                     <Text style={styles.calculationLabel}>
-                      Үндсэн хэмжээ
+                      {t('calc.base')}
                     </Text>
 
                     <Text style={styles.calculationValue}>
@@ -379,7 +381,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
 
                   <View style={styles.calculationRow}>
                     <Text style={styles.calculationLabel}>
-                      Илүүдэл
+                      {t('calc.extra')}
                     </Text>
 
                     <Text style={styles.calculationValue}>
@@ -389,7 +391,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
 
                   <View style={styles.calculationRow}>
                     <Text style={styles.calculationLabel}>
-                      Илүүдлийн хэмжээ
+                      {t('calc.extraValue')}
                     </Text>
 
                     <Text style={styles.calculationValue}>
@@ -402,7 +404,7 @@ export function ActionExperience({ fixedActionId }: { fixedActionId?: ActionId }
 
                 <View style={styles.totalBox}>
                   <Text style={styles.totalLabel}>
-                    Нийт хэрэгцээ
+                    {t('calc.total')}
                   </Text>
 
                   <Text style={styles.totalValue}>

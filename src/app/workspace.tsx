@@ -8,7 +8,7 @@ import { SeoHead } from '../components/seo-head';
 import { AdminApiError, getAuthState, getCloudWorkspace, importCloudWorkspace, syncCloudWorkspace } from '../api';
 import { actionIdForSession, BackupInspection, clearWorkspace, deleteSession, inspectWorkspaceBackup, loadWorkspace, replaceWorkspaceSafely, restoreWorkspaceBackup, saveWorkspace, workspaceSessionLabel, WorkspaceSession, WorkspaceState } from '../workspace-store';
 import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
-import { useI18n } from '../i18n';
+import { syncLabelKey, useI18n } from '../i18n';
 
 export default function WorkspaceScreen() {
   const { t } = useI18n();
@@ -99,7 +99,7 @@ export default function WorkspaceScreen() {
 
         {issue && <View style={styles.notice}><Text style={styles.noticeTitle}>{issue === 'corrupt' ? 'History өгөгдөл уншигдсангүй' : 'Browser storage ашиглах боломжгүй'}</Text><Text style={styles.noticeText}>ENKH хоосон workspace-ээр аюулгүй үргэлжилж байна.</Text></View>}
 
-          {cloud.authenticated && <View style={styles.cloudCard}><Text style={styles.cardEyebrow}>CLOUD WORKSPACE</Text><Text style={styles.cloudStatus}>{workspaceSyncLabel(sync.phase)}</Text><Text style={styles.noticeText}>{cloud.workspace ? 'Таны өөрчлөлт local-д шууд хадгалагдаж, cloud руу аюулгүй sync хийгдэнэ.' : 'Cloud copy хоосон байна. Local workspace-аа та өөрөө сонгож import хийнэ.'}</Text><View style={styles.cloudActions}>{!cloud.workspace ? <Pressable disabled={cloudBusy} accessibilityRole="button" onPress={() => void importLocal()} style={styles.newButton}><Text style={styles.newButtonText}>Local workspace import</Text></Pressable> : <><Pressable disabled={cloudBusy} accessibilityRole="button" onPress={() => void syncLocal()} style={styles.newButton}><Text style={styles.newButtonText}>Cloud руу sync</Text></Pressable><Pressable disabled={cloudBusy} accessibilityRole="button" onPress={loadCloud} style={styles.cancel}><Text style={styles.cancelText}>Cloud copy ачаалах</Text></Pressable></>}</View><Pressable accessibilityRole="button" onPress={() => setShowCloudDetails((value) => !value)} style={styles.detailsButton}><Text style={styles.detailsText}>{showCloudDetails ? 'Дэлгэрэнгүйг нуух' : 'Дэлгэрэнгүй'}</Text></Pressable>{showCloudDetails && <Text style={styles.secondaryMeta}>Cloud revision {cloud.revision} · Manual sync нь fallback хэлбэрээр ажиллана.</Text>}</View>}
+          {cloud.authenticated && <View style={styles.cloudCard}><Text style={styles.cardEyebrow}>{t('workspace.cloud')}</Text><Text style={styles.cloudStatus}>{t(syncLabelKey(sync.phase))}</Text><Text style={styles.noticeText}>{cloud.workspace ? t('account.cloudActive') : t('workspace.empty')}</Text><View style={styles.cloudActions}>{!cloud.workspace ? <Pressable disabled={cloudBusy} accessibilityRole="button" onPress={() => void importLocal()} style={styles.newButton}><Text style={styles.newButtonText}>{t('workspace.import')}</Text></Pressable> : <><Pressable disabled={cloudBusy} accessibilityRole="button" onPress={() => void syncLocal()} style={styles.newButton}><Text style={styles.newButtonText}>{t('workspace.sync')}</Text></Pressable><Pressable disabled={cloudBusy} accessibilityRole="button" onPress={loadCloud} style={styles.cancel}><Text style={styles.cancelText}>{t('workspace.load')}</Text></Pressable></>}</View><Pressable accessibilityRole="button" onPress={() => setShowCloudDetails((value) => !value)} style={styles.detailsButton}><Text style={styles.detailsText}>{showCloudDetails ? t('common.hideDetails') : t('common.details')}</Text></Pressable>{showCloudDetails && <Text style={styles.secondaryMeta}>Cloud revision {cloud.revision}</Text>}</View>}
         {!!cloudNotice && <Text accessibilityLiveRegion="polite" style={styles.warning}>{cloudNotice}</Text>}
 
         {backup.exists && <View style={styles.backupCard}>
@@ -112,7 +112,7 @@ export default function WorkspaceScreen() {
         </View>}
 
         {!state.sessions.length ? (
-          <View style={styles.empty}><Text style={styles.emptyTitle}>Одоогоор хадгалсан ажил алга</Text><Text style={styles.emptyText}>Chat, Хайлт эсвэл Tools ашиглахад таны ажлууд энд автоматаар хадгалагдана.</Text></View>
+          <View style={styles.empty}><Text style={styles.emptyTitle}>{t('workspace.empty')}</Text></View>
         ) : (
           <View style={styles.list}>
             {state.sessions.map((session) => (

@@ -13,11 +13,11 @@ test('text, message and document routes use the real drafting tool', () => {
 
 test('drafting UI has validation, loading, retry, editable copy and safe message behavior', () => {
   const source = read('src/components/drafting-tool.tsx');
-  assert.match(source, /ActivityIndicator/); assert.match(source, /Дахин оролдох/);
-  assert.match(source, /Засварлах ноорог/); assert.match(source, /clipboard\.writeText/);
-  assert.match(source, /Автоматаар илгээгдээгүй/); assert.match(source, /backgroundWorkspaceSync\.schedule/);
-  assert.match(source, /Workspace-д хадгалж чадсангүй/);
-  assert.match(source, /DOCX татах/); assert.match(source, /documentAfterEdit/); assert.match(source, /downloadDocx/);
+  assert.match(source, /ActivityIndicator/); assert.match(source, /common\.retry/);
+  assert.match(source, /draft\.editLabel/); assert.match(source, /clipboard\.writeText/);
+  assert.match(source, /draft\.notSent/); assert.match(source, /backgroundWorkspaceSync\.schedule/);
+  assert.match(source, /draft\.workspaceFailed/);
+  assert.match(source, /draft\.docx/); assert.match(source, /documentAfterEdit/); assert.match(source, /downloadDocx/);
   assert.ok(source.indexOf('saveWorkspace(next)') < source.indexOf('backgroundWorkspaceSync.schedule(next)'));
 });
 

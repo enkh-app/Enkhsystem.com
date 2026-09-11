@@ -8,14 +8,14 @@ import { enkhStructuredData, SeoHead } from '../components/seo-head';
 import { EnkhColors, EnkhLayout } from '../constants/design';
 import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
 import { loadWorkspace, workspaceSessionLabel, WorkspaceSession, WorkspaceState } from '../workspace-store';
-import { useI18n } from '../i18n';
+import { syncLabelKey, useI18n } from '../i18n';
 
 type Mode = 'chat' | 'search';
 const hero = require('../../assets/images/enkh-mountain-hero.png');
-const examples = ['Өнөөдрийн ажлаа төлөвлөе', 'Монголын тухай мэдээлэл хайх', '520 м² дээр 8% нэмэх'];
 
 export default function HomeScreen() {
   const { t } = useI18n();
+  const examples = [{ text: t('home.examplePlan'), mode: 'chat' as const }, { text: t('home.exampleSearch'), mode: 'search' as const }, { text: t('home.exampleCalc'), mode: 'chat' as const }];
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<Mode>('chat');
   const [recent, setRecent] = useState<WorkspaceSession[]>([]);
@@ -48,18 +48,18 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <ImageBackground source={hero} imageStyle={styles.heroImage} style={styles.hero}>
           <View style={styles.heroShade}>
-            <Text style={styles.eyebrow}>ENKH · ТАНЫ ӨДӨР ТУТМЫН AI</Text>
+        <Text style={styles.eyebrow}>{t('home.eyebrow')}</Text>
             <Text accessibilityRole="header" style={styles.title}>{t('home.greeting')}</Text>
             <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
             <View style={styles.composer}>
               <View style={styles.modes}>
-                <ModeButton label="ENKH-ээс асуух" selected={mode === 'chat'} onPress={() => setMode('chat')} />
-                <ModeButton label="Вэбээс хайх" selected={mode === 'search'} onPress={() => setMode('search')} />
+                <ModeButton label={t('home.prompt')} selected={mode === 'chat'} onPress={() => setMode('chat')} />
+                <ModeButton label={t('search.title')} selected={mode === 'search'} onPress={() => setMode('search')} />
               </View>
-              <TextInput accessibilityLabel="ENKH-д өгөх асуулт" multiline value={input} onChangeText={setInput} placeholder={mode === 'chat' ? 'Юу мэдэхийг хүсэж байна вэ?' : 'Юу хайх вэ?'} placeholderTextColor="#71839A" style={styles.input} />
-              <Pressable accessibilityRole="button" accessibilityLabel={mode === 'chat' ? 'Асуулт илгээх' : 'Хайлт хийх'} disabled={!input.trim()} onPress={() => submit()} style={({ pressed }) => [styles.submit, !input.trim() && styles.disabled, pressed && styles.pressed]}><Text style={styles.submitText}>{mode === 'chat' ? 'Асуух' : 'Хайх'} →</Text></Pressable>
+              <TextInput accessibilityLabel={t('home.prompt')} multiline value={input} onChangeText={setInput} placeholder={mode === 'chat' ? t('home.prompt') : t('search.placeholder')} placeholderTextColor="#71839A" style={styles.input} />
+              <Pressable accessibilityRole="button" accessibilityLabel={mode === 'chat' ? t('chat.send') : t('search.button')} disabled={!input.trim()} onPress={() => submit()} style={({ pressed }) => [styles.submit, !input.trim() && styles.disabled, pressed && styles.pressed]}><Text style={styles.submitText}>{mode === 'chat' ? t('home.ask') : t('search.button')} →</Text></Pressable>
             </View>
-            <View style={styles.chips}>{examples.map((example) => <Pressable key={example} accessibilityRole="button" onPress={() => { setMode(example.includes('хайх') ? 'search' : 'chat'); setInput(example); }} style={styles.chip}><Text style={styles.chipText}>{example}</Text></Pressable>)}</View>
+        <View style={styles.chips}>{examples.map((example) => <Pressable key={example.text} accessibilityRole="button" onPress={() => { setMode(example.mode); setInput(example.text); }} style={styles.chip}><Text style={styles.chipText}>{example.text}</Text></Pressable>)}</View>
           </View>
         </ImageBackground>
 
@@ -78,13 +78,13 @@ export default function HomeScreen() {
 
         <View style={styles.dashboardRow}>
           <View style={styles.recentPanel}>
-            <View style={styles.panelHeading}><View><Text style={styles.panelEyebrow}>RECENT WORK</Text><Text style={styles.panelTitle}>Сүүлийн ажлууд</Text></View><Pressable accessibilityRole="link" onPress={() => router.push('/workspace')}><Text style={styles.link}>Бүгдийг харах →</Text></Pressable></View>
-            {recent.length ? recent.map((session) => <Pressable key={session.id} accessibilityRole="link" onPress={() => router.push('/workspace')} style={styles.recentItem}><View style={styles.recentIcon}><Text style={styles.recentIconText}>{session.type === 'chat' ? '✦' : session.type === 'search' ? '⌕' : '◇'}</Text></View><View style={styles.recentText}><Text numberOfLines={1} style={styles.recentTitle}>{session.title}</Text><Text style={styles.recentMeta}>{workspaceSessionLabel(workspace, session)} · {new Date(session.updatedAt).toLocaleDateString()}</Text></View></Pressable>) : <View style={styles.empty}><Text style={styles.emptyTitle}>Workspace хоосон байна</Text><Text style={styles.emptyText}>ENKH ашиглахад таны бодит ажлууд энд харагдана.</Text></View>}
+            <View style={styles.panelHeading}><View><Text style={styles.panelEyebrow}>RECENT WORK</Text><Text style={styles.panelTitle}>{t('home.recent')}</Text></View><Pressable accessibilityRole="link" onPress={() => router.push('/workspace')}><Text style={styles.link}>{t('home.all')}</Text></Pressable></View>
+            {recent.length ? recent.map((session) => <Pressable key={session.id} accessibilityRole="link" onPress={() => router.push('/workspace')} style={styles.recentItem}><View style={styles.recentIcon}><Text style={styles.recentIconText}>{session.type === 'chat' ? '✦' : session.type === 'search' ? '⌕' : '◇'}</Text></View><View style={styles.recentText}><Text numberOfLines={1} style={styles.recentTitle}>{session.title}</Text><Text style={styles.recentMeta}>{workspaceSessionLabel(workspace, session)} · {new Date(session.updatedAt).toLocaleDateString()}</Text></View></Pressable>) : <View style={styles.empty}><Text style={styles.emptyTitle}>{t('home.empty')}</Text><Text style={styles.emptyText}>{t('home.emptyHelp')}</Text></View>}
           </View>
 
           <View style={styles.sideColumn}>
-            <View style={styles.summaryCard}><Text style={styles.panelEyebrow}>WORKSPACE</Text><Text style={styles.summaryTitle}>{workspaceSyncLabel(sync.phase)}</Text><Text style={styles.summaryText}>{sync.revision > 0 ? 'Cloud workspace-тэй холбогдсон.' : 'Local workspace бэлэн.'}</Text><Pressable accessibilityRole="link" onPress={() => router.push('/workspace')}><Text style={styles.link}>Workspace нээх →</Text></Pressable></View>
-            <View style={styles.quickCard}><Text style={styles.panelEyebrow}>QUICK TOOLS</Text><QuickTool icon="T" label="Текст боловсруулах" onPress={() => router.push({ pathname: '/action/[id]', params: { id: 'text' } })}/><QuickTool icon="✉" label="Мессеж бэлтгэх" onPress={() => router.push('/action-message')}/><QuickTool icon="▤" label="Баримт бичиг" onPress={() => router.push('/action-document')}/><QuickTool icon="∑" label="Тооцоолол" onPress={() => router.push('/tools/calculation')}/></View>
+          <View style={styles.summaryCard}><Text style={styles.panelEyebrow}>{t('workspace.title').toUpperCase()}</Text><Text style={styles.summaryTitle}>{t(syncLabelKey(sync.phase))}</Text><Text style={styles.summaryText}>{sync.revision > 0 ? t('home.cloudConnected') : t('home.localReady')}</Text><Pressable accessibilityRole="link" onPress={() => router.push('/workspace')}><Text style={styles.link}>{t('home.workspaceOpen')}</Text></Pressable></View>
+            <View style={styles.quickCard}><Text style={styles.panelEyebrow}>{t('home.quick')}</Text><QuickTool icon="T" label={t('tool.text')} onPress={() => router.push({ pathname: '/action/[id]', params: { id: 'text' } })}/><QuickTool icon="✉" label={t('tool.message')} onPress={() => router.push('/action-message')}/><QuickTool icon="▤" label={t('tool.document')} onPress={() => router.push('/action-document')}/><QuickTool icon="∑" label={t('tool.calculation')} onPress={() => router.push('/tools/calculation')}/></View>
           </View>
         </View>
       </ScrollView>
@@ -97,7 +97,8 @@ function ModeButton({ label, selected, onPress }: { label: string; selected: boo
 }
 
 function Feature({ icon, title, description, onPress }: { icon: string; title: string; description: string; onPress: () => void }) {
-  return <Pressable accessibilityRole="link" onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}><View style={styles.cardIcon}><Text style={styles.cardIconText}>{icon}</Text></View><Text style={styles.cardTitle}>{title}</Text><Text style={styles.cardDescription}>{description}</Text><Text style={styles.cardAction}>Нээх →</Text></Pressable>;
+  const { t } = useI18n();
+  return <Pressable accessibilityRole="link" onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}><View style={styles.cardIcon}><Text style={styles.cardIconText}>{icon}</Text></View><Text style={styles.cardTitle}>{title}</Text><Text style={styles.cardDescription}>{description}</Text><Text style={styles.cardAction}>{t('common.open')}</Text></Pressable>;
 }
 
 function QuickTool({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {

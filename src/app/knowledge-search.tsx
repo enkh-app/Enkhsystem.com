@@ -28,7 +28,7 @@ export default function KnowledgeSearchScreen() {
   useEffect(() => {
     const loaded = loadWorkspace();
     setWorkspace(loaded.state);
-    if (loaded.issue) setStorageWarning('History хадгалах боломжгүй байна.');
+    if (loaded.issue) setStorageWarning(t('search.historyError'));
     if (requestedSessionId) {
       setSessionId(requestedSessionId);
       const restored = entriesFor(loaded.state, requestedSessionId);
@@ -40,7 +40,7 @@ export default function KnowledgeSearchScreen() {
     }
   }, [requestedSessionId]);
 
-  const persist = (next: WorkspaceState) => { setWorkspace(next); if (!saveWorkspace(next)) setStorageWarning('History хадгалах боломжгүй байна.'); };
+  const persist = (next: WorkspaceState) => { setWorkspace(next); if (!saveWorkspace(next)) setStorageWarning(t('search.historyError')); };
 
   const search = async (value = query) => {
     const text = value.trim();
@@ -66,7 +66,7 @@ export default function KnowledgeSearchScreen() {
       next = addEntry(next, { sessionId: activeId, role: 'assistant', type: 'search', content: result.answer.trim(), sources: safeSources });
       persist(next);
       backgroundWorkspaceSync.schedule(next);
-    } catch { setError('Вэб хайлт хийхэд алдаа гарлаа. Query history-д хадгалагдсан тул дахин оролдож болно.'); }
+    } catch { setError(t('search.networkError')); }
     finally { setLoading(false); }
   };
 
@@ -79,7 +79,7 @@ export default function KnowledgeSearchScreen() {
       <View style={styles.searchBox}><TextInput accessibilityLabel={t('search.placeholder')} editable={!loading} value={query} onChangeText={setQuery} onSubmitEditing={() => void search()} placeholder={t('search.placeholder')} placeholderTextColor="#888" returnKeyType="search" style={styles.input}/><Pressable accessibilityRole="button" accessibilityLabel={t('search.button')} disabled={!query.trim() || loading} onPress={() => void search()} style={({pressed})=>[styles.button,(!query.trim()||loading)&&styles.disabled,pressed&&styles.pressed]}><Text style={styles.buttonText}>{t('search.button')}</Text></Pressable></View>
       {loading&&<View accessibilityLiveRegion="polite" style={styles.state}><ActivityIndicator color="#171717"/><Text style={styles.stateText}>{t('search.loading')}</Text></View>}
       {!!error&&<View accessibilityLiveRegion="assertive" style={styles.error}><Text style={styles.errorTitle}>{t('search.failed')}</Text><Text style={styles.errorText}>{error}</Text></View>}
-      {!!answer&&<View style={styles.results}><View style={styles.answerCard}><Text style={styles.label}>ENKH ХАРИУЛТ</Text><Text style={styles.answer}>{answer}</Text></View><Text accessibilityRole="header" style={styles.sourcesTitle}>Эх сурвалж ({sources.length})</Text>{sources.length?sources.map((source,index)=><Pressable key={`${source.url}-${index}`} accessibilityRole="link" accessibilityLabel={`${source.title} эх сурвалжийг нээх`} onPress={()=>void Linking.openURL(source.url)} style={({pressed})=>[styles.source,pressed&&styles.pressed]}><View style={styles.sourceText}><Text numberOfLines={2} style={styles.sourceTitle}>{source.title||source.source||'Эх сурвалж'}</Text><Text numberOfLines={1} style={styles.sourceUrl}>{source.source||source.url}</Text></View><Text style={styles.arrow}>↗</Text></Pressable>):<Text style={styles.noSources}>Энэ хариунд тусдаа эх сурвалж ирсэнгүй.</Text>}</View>}
+      {!!answer&&<View style={styles.results}><View style={styles.answerCard}><Text style={styles.label}>{t('search.answer')}</Text><Text style={styles.answer}>{answer}</Text></View><Text accessibilityRole="header" style={styles.sourcesTitle}>{t('search.sources')} ({sources.length})</Text>{sources.length?sources.map((source,index)=><Pressable key={`${source.url}-${index}`} accessibilityRole="link" accessibilityLabel={`${source.title} ${t('search.sources')}`} onPress={()=>void Linking.openURL(source.url)} style={({pressed})=>[styles.source,pressed&&styles.pressed]}><View style={styles.sourceText}><Text numberOfLines={2} style={styles.sourceTitle}>{source.title||source.source||t('search.sources')}</Text><Text numberOfLines={1} style={styles.sourceUrl}>{source.source||source.url}</Text></View><Text style={styles.arrow}>↗</Text></Pressable>):<Text style={styles.noSources}>{t('search.none')}</Text>}</View>}
     </ScrollView></SafeAreaView>
   );
 }

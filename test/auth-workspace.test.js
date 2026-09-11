@@ -14,7 +14,7 @@ test('account connects to Auth0 BFF without client secrets', () => {
 
 test('cloud workspace uses explicit import and revision-protected sync', () => {
   const api = read('src/api.ts'); const screen = read('src/app/workspace.tsx');
-  assert.match(api, /api\/workspace\/import/); assert.match(api, /expectedRevision/); assert.match(screen, /Local workspace import/); assert.match(screen, /Cloud руу sync/); assert.match(screen, /replaceWorkspaceSafely/);
+  assert.match(api, /api\/workspace\/import/); assert.match(api, /expectedRevision/); assert.match(screen, /workspace\.import/); assert.match(screen, /workspace\.sync/); assert.match(screen, /replaceWorkspaceSafely/);
 });
 
 test('cloud replacement preserves a local backup', () => {

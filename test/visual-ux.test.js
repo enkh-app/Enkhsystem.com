@@ -41,7 +41,7 @@ test('home dashboard uses real workspace and sync state without public account i
   assert.match(home, /loadWorkspace\(\)/);
   assert.doesNotMatch(home, /getAuthState\(\)|firstName|auth\.user/);
   assert.match(home, /backgroundWorkspaceSync\.getSnapshot\(\)/);
-  assert.match(home, /workspaceSyncLabel\(sync\.phase\)/);
+  assert.match(home, /syncLabelKey\(sync\.phase\)/);
   assert.doesNotMatch(home, /fake|mock metric|demo session/i);
 });
 

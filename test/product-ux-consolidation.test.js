@@ -9,7 +9,7 @@ const read = (file) => readFileSync(join(root, file), 'utf8');
 
 test('home quick tools reflect the four real productivity tools without duplicating chat or search', () => {
   const home = read('src/app/index.tsx');
-  for (const label of ['Текст боловсруулах', 'Мессеж бэлтгэх', 'Баримт бичиг', 'Тооцоолол']) assert.match(home, new RegExp(label));
+  for (const key of ['tool.text', 'tool.message', 'tool.document', 'tool.calculation']) assert.match(home, new RegExp(key.replace('.', '\\.')));
   assert.doesNotMatch(home, /Source Search|quickText}>Calculation/);
 });
 
@@ -33,9 +33,9 @@ test('workspace renders metadata-aware Mongolian labels with a safe legacy fallb
 
 test('cloud and backup technical metadata are secondary while safety actions remain available', () => {
   const workspace = read('src/app/workspace.tsx');
-  assert.match(workspace, /workspaceSyncLabel\(sync\.phase\)/);
+  assert.match(workspace, /syncLabelKey\(sync\.phase\)/);
   assert.match(workspace, /showCloudDetails/); assert.match(workspace, /showBackupDetails/);
-  assert.match(workspace, /Cloud руу sync/); assert.match(workspace, /Backup-аас сэргээх/);
+  assert.match(workspace, /workspace\.sync/); assert.match(workspace, /Backup-аас сэргээх/);
   assert.match(workspace, /backgroundWorkspaceSync\.schedule/);
 });
 
@@ -43,7 +43,7 @@ test('account and drafting screens use concise consistent user language', () => 
   const account = read('src/app/account.tsx'); const drafting = read('src/components/drafting-tool.tsx');
   assert.doesNotMatch(account, /SIGNED IN|LOCAL WORKSPACE/);
   assert.match(account, /syncLabelKey/); assert.match(account, /account\.signIn/); assert.match(account, /account\.signOut/);
-  assert.match(drafting, /Үүсгэж байна…/); assert.match(drafting, /Дахин үүсгэх/); assert.match(drafting, /БЭЛЭН НООРОГ/); assert.match(drafting, /Дахин оролдох/);
+  assert.match(drafting, /draft\.generating/); assert.match(drafting, /common\.regenerate/); assert.match(drafting, /draft\.ready/); assert.match(drafting, /common\.retry/);
 });
 
 test('primary navigation is concise and public admin remains absent', () => {
