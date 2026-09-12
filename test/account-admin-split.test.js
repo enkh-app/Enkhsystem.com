@@ -39,7 +39,20 @@ test('account stays owner-scoped while admin is direct-API protected and noindex
 
 test('admin labels are complete in all three dictionaries',()=>{
   const source=read('src/i18n.tsx');
-  for(const key of ['nav.admin','admin.title','admin.readOnly','admin.accounts','admin.reminders','admin.operations','admin.data']){
+  for(const key of ['nav.admin','admin.title','admin.readOnly','admin.accounts','admin.reminders','admin.operations','admin.data','admin.users','admin.usersHelp','admin.userStatus','admin.lastActivity']){
     assert.equal((source.match(new RegExp(`'${key.replace('.','\\.')}'`,'g'))||[]).length,3,key);
   }
+});
+
+test('admin users uses credentialed read-only API and validates the list',async()=>{
+  let request;
+  const users=[{displayName:'Fixture',email:'fixture@example.test',status:'active',createdAt:'2026-01-01T00:00:00.000Z',lastActivityAt:null}];
+  const loaded=loadApi(async(url,options)=>{request={url,options};return{ok:true,json:async()=>({success:true,users})}});
+  try{assert.deepEqual(await loaded.api.getAdminUsers(),users);assert.equal(request.url,'https://api.enkhsystems.com/api/admin/users');assert.equal(request.options.credentials,'include');}finally{loaded.restore()}
+});
+
+test('admin users screen is protected, noindex, responsive, and excludes private content',()=>{
+  const screen=read('src/app/admin/users.tsx');
+  assert.match(screen,/getAdminUsers/); assert.match(screen,/noIndex/); assert.match(screen,/flexWrap:'wrap'/); assert.match(screen,/maxWidth:1100/);
+  assert.doesNotMatch(screen,/auth0_sub|owner_key|workspace.*content|reminder.*note|token|secret|password/i);
 });

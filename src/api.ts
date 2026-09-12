@@ -80,6 +80,7 @@ export type AdminOverview = {
   activity: { messengerActiveMessages: number; messengerMessages24h: number; workspacesUpdated24h: number };
   services: Record<string, { configured: boolean; enabled?: boolean }>;
 };
+export type AdminUserSummary = { displayName: string; email: string; status: 'active' | 'suspended'; createdAt: string; lastActivityAt: string | null };
 
 export type ReminderStatus = 'scheduled' | 'processing' | 'delivered' | 'failed' | 'cancelled';
 export type Reminder = { id: string; title: string; note: string; scheduledAt: string; timezone: string; status: ReminderStatus; deliveryChannel: 'in_app'; createdAt: string; updatedAt: string; deliveredAt: string | null; retryCount: number; version: number };
@@ -153,6 +154,14 @@ export async function getAdminOverview(): Promise<AdminOverview> {
   const payload = await response.json();
   if (!payload?.success || payload.data?.readOnly !== true) throw new AdminApiError(502);
   return payload.data;
+}
+
+export async function getAdminUsers(): Promise<AdminUserSummary[]> {
+  const response = await fetch(`${ENKH_API_URL}/api/admin/users`, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new AdminApiError(response.status);
+  const payload = await response.json();
+  if (!payload?.success || !Array.isArray(payload.users)) throw new AdminApiError(502);
+  return payload.users;
 }
 
 export const adminLoginUrl = `${ENKH_API_URL}/auth/login?returnTo=${encodeURIComponent('/auth/complete')}`;
