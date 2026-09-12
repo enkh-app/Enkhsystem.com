@@ -69,7 +69,17 @@ export class ActionApiError extends Error {
 }
 
 export type AuthUser = { accountId?: string; name: string; email: string; picture: string };
-export type AuthState = { authenticated: boolean; admin: boolean; user?: AuthUser };
+export type AuthState = { authenticated: boolean; admin: boolean; pageAdmin?: boolean; user?: AuthUser };
+
+export type AdminOverview = {
+  readOnly: true;
+  database: { status: string };
+  accounts: { withWorkspace: number };
+  workspaces: { records: number; bytes: number; updated24h: number };
+  reminders: { total: number; scheduled: number; processing: number; delivered: number; failed: number; cancelled: number };
+  activity: { messengerActiveMessages: number; messengerMessages24h: number; workspacesUpdated24h: number };
+  services: Record<string, { configured: boolean; enabled?: boolean }>;
+};
 
 export type ReminderStatus = 'scheduled' | 'processing' | 'delivered' | 'failed' | 'cancelled';
 export type Reminder = { id: string; title: string; note: string; scheduledAt: string; timezone: string; status: ReminderStatus; deliveryChannel: 'in_app'; createdAt: string; updatedAt: string; deliveredAt: string | null; retryCount: number; version: number };
@@ -88,7 +98,7 @@ export async function getAuthState(): Promise<AuthState> {
   if (response.status === 401) return { authenticated: false, admin: false };
   if (!response.ok) throw new Error(`Auth API error: ${response.status}`);
   const payload = await response.json();
-  return { authenticated: payload?.authenticated === true, admin: payload?.admin === true, user: payload?.user };
+  return { authenticated: payload?.authenticated === true, admin: payload?.admin === true, pageAdmin: payload?.pageAdmin === true, user: payload?.user };
 }
 
 export const authLoginUrl = `${ENKH_API_URL}/auth/login?returnTo=${encodeURIComponent('/auth/account-complete')}`;
@@ -132,6 +142,16 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
   if (!response.ok) throw new AdminApiError(response.status);
   const payload = await response.json();
   if (!payload?.success || !payload.data) throw new AdminApiError(502);
+  return payload.data;
+}
+
+export async function getAdminOverview(): Promise<AdminOverview> {
+  const response = await fetch(`${ENKH_API_URL}/api/admin/overview`, {
+    method: 'GET', credentials: 'include', headers: { Accept: 'application/json' }
+  });
+  if (!response.ok) throw new AdminApiError(response.status);
+  const payload = await response.json();
+  if (!payload?.success || payload.data?.readOnly !== true) throw new AdminApiError(502);
   return payload.data;
 }
 

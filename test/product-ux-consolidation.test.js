@@ -46,10 +46,13 @@ test('account and drafting screens use concise consistent user language', () => 
   assert.match(drafting, /draft\.generating/); assert.match(drafting, /common\.regenerate/); assert.match(drafting, /draft\.ready/); assert.match(drafting, /common\.retry/);
 });
 
-test('primary navigation is concise and public admin remains absent', () => {
+test('primary navigation is concise and admin appears only after server-verified authorization', () => {
   const header = read('src/components/app-header.tsx');
   for (const key of ['nav.home','nav.chat','nav.search','nav.workspace','nav.tools']) assert.match(header, new RegExp(key.replace('.', '\\.')));
-  assert.doesNotMatch(header, /\/admin|Admin/);
+  const primary = header.match(/const primary=\[(.*?)\] as const;/s)?.[1] || '';
+  assert.doesNotMatch(primary, /\/admin|nav\.admin/);
+  assert.match(header, /state\.authenticated&&state\.admin/);
+  assert.match(header, /showAdmin&&link\(adminItem\)/);
   assert.match(header, /minHeight: 44/);
 });
 
