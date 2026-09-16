@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "enkh-app",
-    "slug": "enkh-app",
+    "slug": "nasaa",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -42,6 +42,15 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {
+        "sitemap": false
+      },
+      "eas": {
+        "projectId": "0a058132-e8ad-43f8-9be0-cf27937541f8"
+      }
+    },
+    "owner": "enkhsystems-team"
   }
 }
