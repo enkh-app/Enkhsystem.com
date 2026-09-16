@@ -9,8 +9,13 @@ import { SeoHead } from '../components/seo-head';
 import { addEntry, contextFor, createSession, emptyWorkspace, entriesFor, loadWorkspace, saveWorkspace, WorkspaceEntry, WorkspaceState } from '../workspace-store';
 import { backgroundWorkspaceSync } from '../workspace-sync';
 import { useI18n } from '../i18n';
+import MobileChatScreen from '../components/mobile-chat';
 
 export default function ChatScreen() {
+  return Platform.OS === 'web' ? <WebChatScreen /> : <MobileChatScreen />;
+}
+
+function WebChatScreen() {
   const { t } = useI18n();
   const params = useLocalSearchParams<{ prompt?: string; sessionId?: string }>();
   const initialPrompt = typeof params.prompt === 'string' ? params.prompt : '';
