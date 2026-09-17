@@ -81,7 +81,7 @@ export default function NativeChatScreen() {
     !state.conversations.find((item) => item.id === conversation)?.deleted);
   const pending = state.pendingTurns.length + state.pendingDeletes.length;
 
-  return <SafeAreaView style={styles.page}>
+  return <SafeAreaView edges={['top']} style={styles.page}>
     <AppHeader active="chat" />
     <KeyboardAvoidingView style={styles.layout} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.header}>

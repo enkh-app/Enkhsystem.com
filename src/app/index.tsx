@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader } from '../components/app-header';
@@ -9,11 +9,16 @@ import { EnkhColors, EnkhLayout } from '../constants/design';
 import { backgroundWorkspaceSync, workspaceSyncLabel, WorkspaceSyncSnapshot } from '../workspace-sync';
 import { loadWorkspace, workspaceSessionLabel, WorkspaceSession, WorkspaceState } from '../workspace-store';
 import { syncLabelKey, useI18n } from '../i18n';
+import MobileHome from '../components/mobile-home';
 
 type Mode = 'chat' | 'search';
 const hero = require('../../assets/images/enkh-mountain-hero.png');
 
 export default function HomeScreen() {
+  return Platform.OS === 'web' ? <WebHomeScreen /> : <MobileHome />;
+}
+
+function WebHomeScreen() {
   const { t } = useI18n();
   const examples = [{ text: t('home.examplePlan'), mode: 'chat' as const }, { text: t('home.exampleSearch'), mode: 'search' as const }, { text: t('home.exampleCalc'), mode: 'chat' as const }];
   const [input, setInput] = useState('');
