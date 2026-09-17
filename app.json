@@ -8,10 +8,11 @@
     "scheme": "enkhapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/enkh-ios-icon.png",
       "bundleIdentifier": "com.enkhsystem.enkh",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "ENKH AI"
       }
     },
     "android": {
