@@ -18,18 +18,62 @@ function load(name) {
   return module.exports;
 }
 const { mobileAuthConfig } = load('auth-config');
-const { createMobileChatApi, ChatApiError } = load('chat-api');
+const { createMobileChatApi, resolveMobileChatApiBase, ChatApiError } = load('chat-api');
 const { MobileChatEngine } = load('chat-engine');
 const id = (number) => `${String(number).padStart(8, '0')}-1111-4111-8111-111111111111`;
 
-test('missing Auth0 public config fails closed and API base is fixed to production', () => {
+test('missing Auth0 public config fails closed and native Chat defaults to production', () => {
   assert.throws(() => mobileAuthConfig({}), /MOBILE_AUTH_NOT_CONFIGURED/);
   assert.throws(() => mobileAuthConfig({ EXPO_PUBLIC_AUTH0_ISSUER_BASE_URL: 'http://bad',
     EXPO_PUBLIC_AUTH0_MOBILE_CLIENT_ID: 'fake-client-id', EXPO_PUBLIC_AUTH0_AUDIENCE: 'https://api.test' }));
   const config = mobileAuthConfig({ EXPO_PUBLIC_AUTH0_ISSUER_BASE_URL: 'https://issuer.test/',
     EXPO_PUBLIC_AUTH0_MOBILE_CLIENT_ID: 'public-client-id', EXPO_PUBLIC_AUTH0_AUDIENCE: 'https://api.test' });
   assert.equal(config.apiBase, 'https://api.enkhsystems.com');
+  assert.equal(resolveMobileChatApiBase(), 'https://api.enkhsystems.com');
   assert.throws(() => createMobileChatApi(async () => 'token', fetch, 'https://untrusted.example'));
+});
+
+test('explicit test HTTPS origin is allowed; malformed and insecure overrides fail before token access', async () => {
+  const nativeScreen = readFileSync(join(__dirname, '..', 'src', 'components', 'mobile-chat.native.tsx'), 'utf8');
+  assert.match(nativeScreen, /resolveMobileChatApiBase\(process\.env\.EXPO_PUBLIC_ENKH_CHAT_API_URL\)/);
+  assert.match(nativeScreen, /import \{ fetch as expoFetch \} from 'expo\/fetch'/);
+  assert.match(nativeScreen, /createMobileChatApi\(mobileAccessToken, expoFetch/);
+  const testOrigin = 'https://api-test.enkhsystems.com';
+  assert.equal(resolveMobileChatApiBase(testOrigin), testOrigin);
+  let tokenCalls = 0;
+  const calls = [];
+  const api = createMobileChatApi(async () => { tokenCalls++; return 'fixture-token'; },
+    async (url, options) => { calls.push({ url, options });
+      return { ok: true, json: async () => ({ success: true, cursor: 0 }) }; },
+    resolveMobileChatApiBase(testOrigin));
+  await api.sync({ conversations: [], messages: [] });
+  assert.equal(calls[0].url, `${testOrigin}/api/chat/sync`);
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer fixture-token');
+  assert.equal(calls[0].options.redirect, 'error');
+  for (const invalid of ['', 'http://api-test.enkhsystems.com', 'http://localhost:3000',
+    'https://api-test.enkhsystems.com/', 'https://api-test.enkhsystems.com/path',
+    'https://api-test.enkhsystems.com?next=other', 'https://api-test.enkhsystems.com#fragment',
+    'https://api-test.enkhsystems.com.evil.test', 'https://user@api-test.enkhsystems.com',
+    'https://api-test.enkhsystems.com:443', 'https://untrusted.example']) {
+    assert.throws(() => resolveMobileChatApiBase(invalid), /INVALID_CHAT_API_BASE/);
+    assert.throws(() => createMobileChatApi(async () => { tokenCalls++; return 'fixture-token'; },
+      fetch, invalid), /INVALID_CHAT_API_BASE/);
+  }
+  assert.equal(tokenCalls, 1);
+  assert.equal(calls.length, 1);
+});
+
+test('redirects cannot carry a bearer token to a different origin', async () => {
+  const calls = [];
+  const api = createMobileChatApi(async () => 'fixture-token', async (url, options) => {
+    calls.push({ url, options });
+    throw new TypeError('redirect rejected');
+  }, resolveMobileChatApiBase('https://api-test.enkhsystems.com'));
+  await assert.rejects(api.sync({ conversations: [], messages: [] }),
+    (error) => error instanceof ChatApiError && error.code === 'NETWORK_UNAVAILABLE');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://api-test.enkhsystems.com/api/chat/sync');
+  assert.equal(calls[0].options.redirect, 'error');
 });
 
 test('API uses bearer only for ENKH hostname and rejects malformed/oversized responses', async () => {

@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
+import { fetch as expoFetch } from 'expo/fetch';
 import { AppHeader } from './app-header';
 import { useI18n } from '../i18n';
 import { mobileAccountKey, mobileAccessToken, mobileSignIn, mobileSignOut } from '../mobile/auth.native';
-import { createMobileChatApi } from '../mobile/chat-api';
+import { createMobileChatApi, resolveMobileChatApiBase } from '../mobile/chat-api';
 import { MobileChatEngine, LocalChatState } from '../mobile/chat-engine';
 import { nativeChatPersistence } from '../mobile/chat-storage.native';
 
@@ -23,14 +24,15 @@ export default function NativeChatScreen() {
 
   useEffect(() => {
     let active = true;
-    const client = createMobileChatApi(mobileAccessToken, fetch, 'https://api.enkhsystems.com',
-      Platform.OS === 'android' ? 'android' : 'ios');
-    const instance = new MobileChatEngine(nativeChatPersistence, client, Crypto.randomUUID,
-      (next) => { if (active) setState(next); });
-    engine.current = instance;
     setWorking(true);
     void (async () => {
       try {
+        const client = createMobileChatApi(mobileAccessToken, expoFetch,
+          resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_CHAT_API_URL),
+          Platform.OS === 'android' ? 'android' : 'ios');
+        const instance = new MobileChatEngine(nativeChatPersistence, client, Crypto.randomUUID,
+          (next) => { if (active) setState(next); });
+        engine.current = instance;
         const key = await mobileAccountKey();
         if (!active) return;
         setAccount(key);
@@ -41,7 +43,7 @@ export default function NativeChatScreen() {
         await instance.retryPending();
         await instance.retryDeletes();
         await instance.pull();
-      } catch { if (active) setNotice('Local Chat-ийг ачаалах боломжгүй байна. Дахин оролдоно уу.'); }
+      } catch { if (active) setNotice('Chat-ийг ачаалах боломжгүй байна. Local өгөгдөл хэвээр.'); }
       finally { if (active) setWorking(false); }
     })();
     return () => { active = false; engine.current = null; };

@@ -6,6 +6,15 @@ export type ChatChange = { kind: 'conversation' | 'message'; id: string; changeS
   clientTurnId: string | null; role: 'user' | 'assistant' | null; content: string | null };
 export class ChatApiError extends Error { constructor(public status: number, public code: string) { super(code); } }
 
+const PRODUCTION_CHAT_API = 'https://api.enkhsystems.com';
+const TEST_CHAT_API = 'https://api-test.enkhsystems.com';
+
+export function resolveMobileChatApiBase(value?: string): string {
+  if (value === undefined) return PRODUCTION_CHAT_API;
+  if (value === TEST_CHAT_API) return TEST_CHAT_API;
+  throw new Error('INVALID_CHAT_API_BASE');
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function validId(id: string) { if (!UUID.test(id)) throw new ChatApiError(400, 'INVALID_ID'); return id; }
 function validateTurn(data: unknown): ChatTurnResponse {
@@ -19,14 +28,13 @@ function validateTurn(data: unknown): ChatTurnResponse {
 }
 
 export function createMobileChatApi(token: () => Promise<string>, transport: typeof fetch = fetch,
-  apiBase = 'https://api.enkhsystems.com', clientType: 'ios' | 'android' = 'ios') {
-  if (apiBase !== 'https://api.enkhsystems.com' && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(apiBase))
-    throw new Error('INVALID_CHAT_API_BASE');
+  apiBase = PRODUCTION_CHAT_API, clientType: 'ios' | 'android' = 'ios') {
+  if (apiBase !== PRODUCTION_CHAT_API && apiBase !== TEST_CHAT_API) throw new Error('INVALID_CHAT_API_BASE');
   async function request(path: string, method = 'GET', body?: unknown): Promise<unknown> {
     const accessToken = await token();
     if (!accessToken || /[\r\n]/.test(accessToken)) throw new ChatApiError(401, 'MOBILE_SIGN_IN_REQUIRED');
     let response: Response;
-    try { response = await transport(`${apiBase}${path}`, { method,
+    try { response = await transport(`${apiBase}${path}`, { method, redirect: 'error',
       headers: { Accept: 'application/json', Authorization: `Bearer ${accessToken}`,
         'X-Enkh-Client-Type': clientType, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) }); }
