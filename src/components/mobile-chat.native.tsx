@@ -6,6 +6,7 @@ import { fetch as expoFetch } from 'expo/fetch';
 import { AppHeader } from './app-header';
 import { useI18n } from '../i18n';
 import { mobileAccountKey, mobileAccessToken, mobileSignIn, mobileSignOut } from '../mobile/auth.native';
+import { formatMobileAuthDiagnostic } from '../mobile/auth-diagnostic';
 import { createMobileChatApi, resolveMobileChatApiBase } from '../mobile/chat-api';
 import { MobileChatEngine, LocalChatState } from '../mobile/chat-engine';
 import { nativeChatPersistence } from '../mobile/chat-storage.native';
@@ -56,7 +57,7 @@ export default function NativeChatScreen() {
       await engine.current?.switchAccount(key);
       setAccount(key); setConversation(Crypto.randomUUID());
       await engine.current?.pull();
-    } catch { setNotice('Нэвтрэлт одоогоор боломжгүй байна. Тохиргоог шалгаад дахин оролдоно уу.'); }
+    } catch (error) { setNotice(`Нэвтрэлт одоогоор боломжгүй байна. ${formatMobileAuthDiagnostic(error, 'chat_pull')}`); }
     finally { setWorking(false); }
   };
   const signOut = async () => {

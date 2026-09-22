@@ -2,6 +2,7 @@ import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { mobileAuthConfig } from './auth-config';
+import { atMobileAuthStage } from './auth-diagnostic';
 
 const TOKEN_KEY = 'enkh.mobile.auth.v1';
 type StoredTokens = { accessToken: string; refreshToken?: string; expiresAt: number };
@@ -34,6 +35,9 @@ function checkToken(token: string, requireFresh = true) {
     throw new Error('MOBILE_TOKEN_INVALID');
   return payload.sub;
 }
+async function secureStoreReady() {
+  if (!(await SecureStore.isAvailableAsync())) throw new Error('MOBILE_SECURE_STORAGE_UNAVAILABLE');
+}
 async function readTokens(): Promise<StoredTokens | null> {
   if (!(await SecureStore.isAvailableAsync())) throw new Error('MOBILE_SECURE_STORAGE_UNAVAILABLE');
   const raw = await SecureStore.getItemAsync(TOKEN_KEY);
@@ -46,23 +50,35 @@ async function saveTokens(value: StoredTokens) {
 }
 
 export async function mobileSignIn(): Promise<string> {
-  const settings = config();
-  if (!(await SecureStore.isAvailableAsync())) throw new Error('MOBILE_SECURE_STORAGE_UNAVAILABLE');
-  const discovery = await AuthSession.fetchDiscoveryAsync(settings.issuer);
-  if (!discovery.authorizationEndpoint || !discovery.tokenEndpoint) throw new Error('MOBILE_AUTH_UNAVAILABLE');
-  const request = new AuthSession.AuthRequest({ clientId: settings.clientId, redirectUri: redirectUri(),
+  const settings = await atMobileAuthStage('config', config);
+  await atMobileAuthStage('secure_store', secureStoreReady);
+  const discovery = await atMobileAuthStage('discovery', async () => {
+    const result = await AuthSession.fetchDiscoveryAsync(settings.issuer);
+    if (!result.authorizationEndpoint || !result.tokenEndpoint) throw new Error('MOBILE_AUTH_UNAVAILABLE');
+    return result;
+  });
+  const request = await atMobileAuthStage('auth_request', () => new AuthSession.AuthRequest({
+    clientId: settings.clientId, redirectUri: redirectUri(),
     responseType: AuthSession.ResponseType.Code, usePKCE: true,
-    scopes: ['openid', 'profile', 'offline_access'], extraParams: { audience: settings.audience } });
-  const response = await request.promptAsync(discovery);
-  if (response.type !== 'success' || !response.params.code || !request.codeVerifier)
-    throw new Error('MOBILE_AUTH_CANCELLED');
-  const token = await AuthSession.exchangeCodeAsync({ clientId: settings.clientId,
-    code: response.params.code, redirectUri: redirectUri(),
-    extraParams: { code_verifier: request.codeVerifier } }, discovery);
-  const sub = checkToken(token.accessToken);
-  await saveTokens({ accessToken: token.accessToken, refreshToken: token.refreshToken,
-    expiresAt: (token.issuedAt + (token.expiresIn || 0)) * 1000 });
-  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `enkh-mobile-owner:${sub}`);
+    scopes: ['openid', 'profile', 'offline_access'], extraParams: { audience: settings.audience },
+  }));
+  const response = await atMobileAuthStage('browser_prompt', async () => {
+    const result = await request.promptAsync(discovery);
+    if (result.type !== 'success' || !result.params.code || !request.codeVerifier)
+      throw new Error('MOBILE_AUTH_CANCELLED');
+    return result;
+  });
+  const token = await atMobileAuthStage('token_exchange', () => AuthSession.exchangeCodeAsync({
+    clientId: settings.clientId, code: response.params.code, redirectUri: redirectUri(),
+    extraParams: { code_verifier: request.codeVerifier! },
+  }, discovery));
+  const sub = await atMobileAuthStage('token_validation', () => checkToken(token.accessToken));
+  await atMobileAuthStage('secure_store_save', () => saveTokens({
+    accessToken: token.accessToken, refreshToken: token.refreshToken,
+    expiresAt: (token.issuedAt + (token.expiresIn || 0)) * 1000,
+  }));
+  return atMobileAuthStage('token_validation', () =>
+    Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `enkh-mobile-owner:${sub}`));
 }
 
 export async function mobileAccessToken(): Promise<string> {
