@@ -2,7 +2,7 @@ import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { mobileAuthConfig } from './auth-config';
-import { atMobileAuthStage } from './auth-diagnostic';
+import { atMobileAuthStage, mobileAuthPromptFailureCode } from './auth-diagnostic';
 
 const TOKEN_KEY = 'enkh.mobile.auth.v1';
 type StoredTokens = { accessToken: string; refreshToken?: string; expiresAt: number };
@@ -57,19 +57,22 @@ export async function mobileSignIn(): Promise<string> {
     if (!result.authorizationEndpoint || !result.tokenEndpoint) throw new Error('MOBILE_AUTH_UNAVAILABLE');
     return result;
   });
+  const redirect = await atMobileAuthStage('auth_request', redirectUri);
+  const redirectMatch = redirect === 'enkhapp://auth';
   const request = await atMobileAuthStage('auth_request', () => new AuthSession.AuthRequest({
-    clientId: settings.clientId, redirectUri: redirectUri(),
+    clientId: settings.clientId, redirectUri: redirect,
     responseType: AuthSession.ResponseType.Code, usePKCE: true,
     scopes: ['openid', 'profile', 'offline_access'], extraParams: { audience: settings.audience },
-  }));
+  }), redirectMatch);
   const response = await atMobileAuthStage('browser_prompt', async () => {
     const result = await request.promptAsync(discovery);
-    if (result.type !== 'success' || !result.params.code || !request.codeVerifier)
-      throw new Error('MOBILE_AUTH_CANCELLED');
+    const failureCode = mobileAuthPromptFailureCode(result, !!request.codeVerifier);
+    if (failureCode) throw new Error(failureCode);
+    if (result.type !== 'success') throw new Error('MOBILE_AUTH_BROWSER_ERROR');
     return result;
-  });
+  }, redirectMatch);
   const token = await atMobileAuthStage('token_exchange', () => AuthSession.exchangeCodeAsync({
-    clientId: settings.clientId, code: response.params.code, redirectUri: redirectUri(),
+    clientId: settings.clientId, code: response.params.code, redirectUri: redirect,
     extraParams: { code_verifier: request.codeVerifier! },
   }, discovery));
   const sub = await atMobileAuthStage('token_validation', () => checkToken(token.accessToken));
