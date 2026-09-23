@@ -1,14 +1,18 @@
 import * as AuthSession from 'expo-auth-session';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
+import * as WebBrowser from 'expo-web-browser';
 import { mobileAuthConfig } from './auth-config';
 import { atMobileAuthStage, mobileAuthPromptFailureCode } from './auth-diagnostic';
+import { AuthGenerationGuard, MOBILE_LOGOUT_REDIRECT, mobileLogoutUrl,
+  runLocalFirstSignOut, saveIfCurrent } from './auth-logout';
 
 const TOKEN_KEY = 'enkh.mobile.auth.v1';
 const PREFERRED_NAME_KEY = 'enkh.mobile.preferred-name.v1';
 type StoredTokens = { accessToken: string; refreshToken?: string; expiresAt: number; displayName?: string };
 export type MobileProfile = { signedIn: boolean; displayName: string | null; preferredName: string | null; greetingName: string | null };
 let pendingRefresh: Promise<string> | null = null;
+const authGeneration = new AuthGenerationGuard();
 
 function config() {
   return mobileAuthConfig({
@@ -58,12 +62,15 @@ async function readTokens(): Promise<StoredTokens | null> {
   if (!raw) return null;
   try { return JSON.parse(raw) as StoredTokens; } catch { throw new Error('MOBILE_TOKEN_INVALID'); }
 }
-async function saveTokens(value: StoredTokens) {
+async function saveTokens(value: StoredTokens, generation = authGeneration.capture()) {
   await secureStoreReady();
-  await SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(value));
+  await saveIfCurrent(authGeneration, generation,
+    () => SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(value)),
+    () => SecureStore.deleteItemAsync(TOKEN_KEY));
 }
 
 export async function mobileSignIn(): Promise<string> {
+  const generation = authGeneration.capture();
   const settings = await atMobileAuthStage('config', config);
   await atMobileAuthStage('secure_store', secureStoreReady);
   const discovery = await atMobileAuthStage('discovery', async () => {
@@ -94,7 +101,7 @@ export async function mobileSignIn(): Promise<string> {
     accessToken: token.accessToken, refreshToken: token.refreshToken,
     expiresAt: (token.issuedAt + (token.expiresIn || 0)) * 1000,
     displayName: tokenDisplayName(token.idToken) || undefined,
-  }));
+  }, generation));
   return atMobileAuthStage('token_validation', () =>
     Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `enkh-mobile-owner:${sub}`));
 }
@@ -105,13 +112,14 @@ export async function mobileAccessToken(): Promise<string> {
   if (stored.expiresAt > Date.now() + 60000) { checkToken(stored.accessToken); return stored.accessToken; }
   if (!stored.refreshToken) throw new Error('MOBILE_SIGN_IN_REQUIRED');
   if (!pendingRefresh) pendingRefresh = (async () => {
+    const generation = authGeneration.capture();
     const settings = config();
     const discovery = await AuthSession.fetchDiscoveryAsync(settings.issuer);
     const fresh = await AuthSession.refreshAsync({ clientId: settings.clientId, refreshToken: stored.refreshToken! }, discovery);
     checkToken(fresh.accessToken);
     await saveTokens({ accessToken: fresh.accessToken, refreshToken: fresh.refreshToken || stored.refreshToken,
       expiresAt: (fresh.issuedAt + (fresh.expiresIn || 0)) * 1000,
-      displayName: tokenDisplayName(fresh.idToken) || stored.displayName });
+      displayName: tokenDisplayName(fresh.idToken) || stored.displayName }, generation);
     return fresh.accessToken;
   })().finally(() => { pendingRefresh = null; });
   return pendingRefresh;
@@ -146,4 +154,25 @@ export async function mobileSetPreferredName(value: string) {
   return normalized || null;
 }
 
-export async function mobileSignOut() { await SecureStore.deleteItemAsync(TOKEN_KEY); }
+export async function mobileSignOut(afterLocalClear?: () => Promise<void> | void) {
+  return runLocalFirstSignOut({
+    invalidate: () => { authGeneration.invalidate(); pendingRefresh = null; },
+    readRefreshToken: async () => (await readTokens())?.refreshToken || null,
+    deleteCredentials: async () => { await secureStoreReady(); await SecureStore.deleteItemAsync(TOKEN_KEY); },
+    afterLocalClear,
+    revokeRefreshToken: async (token) => {
+      const settings = config();
+      const discovery = await AuthSession.fetchDiscoveryAsync(settings.issuer);
+      if (!discovery.revocationEndpoint) throw new Error('MOBILE_REVOCATION_UNAVAILABLE');
+      await AuthSession.revokeAsync({ clientId: settings.clientId, token }, discovery);
+    },
+    closeBrowserSession: async () => {
+      const settings = config();
+      const redirect = AuthSession.makeRedirectUri({ scheme: 'enkhapp', path: 'auth/logout' });
+      if (redirect !== MOBILE_LOGOUT_REDIRECT) throw new Error('MOBILE_LOGOUT_INVALID');
+      const result = await WebBrowser.openAuthSessionAsync(
+        mobileLogoutUrl(settings.issuer, settings.clientId, redirect), redirect);
+      if (result.type !== 'success') throw new Error('MOBILE_LOGOUT_BROWSER_ERROR');
+    },
+  });
+}

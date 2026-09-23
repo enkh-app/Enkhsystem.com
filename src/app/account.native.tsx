@@ -3,7 +3,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/app-header';
-import { mobileAccountKey, mobileProfile, mobileSetPreferredName } from '../mobile/auth.native';
+import { mobileAccountKey, mobileProfile, mobileSetPreferredName, mobileSignOut } from '../mobile/auth.native';
 import { useI18n } from '../i18n';
 
 export default function NativeAccountScreen() {
@@ -12,6 +12,8 @@ export default function NativeAccountScreen() {
   const [accountName, setAccountName] = useState<string | null>(null);
   const [preferredName, setPreferredName] = useState('');
   const [saved, setSaved] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [notice, setNotice] = useState('');
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -28,6 +30,12 @@ export default function NativeAccountScreen() {
     const value = await mobileSetPreferredName(preferredName);
     setPreferredName(value || '');
     setSaved(true);
+  };
+  const signOut = async () => {
+    setSigningOut(true); setNotice('');
+    try { await mobileSignOut(() => { setSignedIn(false); setAccountName(null); }); }
+    catch { setNotice('Гарах үйлдэл амжилтгүй боллоо.'); }
+    finally { setSigningOut(false); }
   };
 
   return <SafeAreaView edges={['top']} style={styles.page}>
@@ -51,6 +59,11 @@ export default function NativeAccountScreen() {
         <Pressable accessibilityRole="link" onPress={() => router.navigate('/chat')} style={styles.chatButton}>
           <Text style={styles.chatButtonText}>{t('nav.chat')}  →</Text>
         </Pressable>
+        {signedIn ? <Pressable accessibilityRole="button" disabled={signingOut}
+          onPress={() => void signOut()} style={styles.signOutButton}>
+          <Text style={styles.signOutText}>{t('account.signOut')}</Text>
+        </Pressable> : null}
+        {!!notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
       </View>
       <View style={styles.moreCard}>
         <Text accessibilityRole="header" style={styles.moreTitle}>Бусад</Text>
@@ -88,6 +101,10 @@ const styles = StyleSheet.create({
   chatButton: { alignSelf: 'flex-start', minHeight: 48, marginTop: 18, paddingHorizontal: 18,
     justifyContent: 'center', borderRadius: 13, backgroundColor: '#102A43' },
   chatButtonText: { color: '#FFFFFF', fontWeight: '900' },
+  signOutButton: { minHeight: 48, marginTop: 12, alignSelf: 'flex-start', justifyContent: 'center',
+    paddingHorizontal: 18, borderRadius: 13, borderWidth: 1, borderColor: '#CAD7E5' },
+  signOutText: { color: '#243B53', fontWeight: '900' },
+  notice: { marginTop: 10, color: '#744139', fontSize: 13 },
   moreCard: { marginTop: 16, padding: 18, borderRadius: 20, backgroundColor: '#FFFFFF',
     borderWidth: 1, borderColor: '#DFEAF7' },
   moreTitle: { marginBottom: 6, color: '#102A43', fontSize: 17, fontWeight: '900' },

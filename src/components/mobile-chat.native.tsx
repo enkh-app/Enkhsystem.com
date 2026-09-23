@@ -62,7 +62,9 @@ export default function NativeChatScreen() {
   };
   const signOut = async () => {
     setWorking(true); setNotice('');
-    try { await mobileSignOut(); await engine.current?.switchAccount(null); setAccount(null); setConversation(''); }
+    try { await mobileSignOut(async () => {
+      await engine.current?.switchAccount(null); setAccount(null); setConversation('');
+    }); }
     catch { setNotice('Гарах үйлдэл амжилтгүй боллоо.'); }
     finally { setWorking(false); }
   };
