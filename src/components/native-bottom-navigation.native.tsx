@@ -1,4 +1,4 @@
-import { router, usePathname } from 'expo-router';
+﻿import { router, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { nativePrimaryRoute, nativePrimaryRoutes } from './native-navigation-model';

@@ -1,4 +1,4 @@
-const { test } = require('node:test');
+﻿const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
@@ -14,8 +14,8 @@ const { nativePrimaryRoutes, nativePrimaryRoute } = moduleResult.exports;
 
 test('native bottom navigation has five reachable primary destinations', () => {
   assert.deepEqual(nativePrimaryRoutes.map((item) => [item.label, item.href]), [
-    ['Home', '/'], ['Chat', '/chat'], ['Actions', '/actions'],
-    ['Knowledge', '/knowledge'], ['Account', '/account'],
+    ['Нүүр', '/'], ['Чат', '/chat'], ['Үйлдэл', '/actions'],
+    ['Мэдлэг', '/knowledge'], ['Би', '/account'],
   ]);
   for (const pathname of ['/', '/chat', '/actions', '/knowledge', '/account'])
     assert.equal(nativePrimaryRoute(pathname), pathname);

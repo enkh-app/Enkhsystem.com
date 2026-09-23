@@ -1,9 +1,9 @@
-export const nativePrimaryRoutes = [
-  { label: 'Home', icon: '⌂', href: '/' },
-  { label: 'Chat', icon: '✦', href: '/chat' },
-  { label: 'Actions', icon: '◇', href: '/actions' },
-  { label: 'Knowledge', icon: '⌕', href: '/knowledge' },
-  { label: 'Account', icon: '○', href: '/account' },
+﻿export const nativePrimaryRoutes = [
+  { label: 'Нүүр', icon: '⌂', href: '/' },
+  { label: 'Чат', icon: '✦', href: '/chat' },
+  { label: 'Үйлдэл', icon: '◇', href: '/actions' },
+  { label: 'Мэдлэг', icon: '⌕', href: '/knowledge' },
+  { label: 'Би', icon: '○', href: '/account' },
 ] as const;
 
 export function nativePrimaryRoute(pathname: string) {

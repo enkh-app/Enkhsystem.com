@@ -1,65 +1,91 @@
-import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+﻿import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from './app-header';
-import { useI18n } from '../i18n';
+import { mobileProfile } from '../mobile/auth.native';
 
-const shortcuts = [
-  { icon: '✦', title: 'Chat', caption: 'Энхээс асуух', href: '/chat' },
-  { icon: '◇', title: 'Actions', caption: 'Ажлаа амжуулах', href: '/actions' },
-  { icon: '⌕', title: 'Knowledge', caption: 'Хайж мэдэх', href: '/knowledge' },
+export const mobileHomePrimaryDestinations = [
+  { href: '/chat' },
+  { href: '/actions' },
+  { href: '/knowledge' },
 ] as const;
 
+const DEFAULT_GREETING = 'Сайн байна уу, Nasa.';
+
 export default function MobileHome() {
-  const { t } = useI18n();
+  const [input, setInput] = useState('');
+  const [greetingName, setGreetingName] = useState<string | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    void mobileProfile().then((profile) => { if (active) setGreetingName(profile.greetingName); });
+    return () => { active = false; };
+  }, []));
+
+  const submit = () => {
+    const prompt = input.trim();
+    if (!prompt) return;
+    setInput('');
+    router.navigate({ pathname: '/chat', params: { prompt } });
+  };
+
   return <SafeAreaView edges={['top']} style={styles.page}>
     <AppHeader active="home" />
-    <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.eyebrow}>ENKH · ТАНЫ ХАЛААСНЫ ТУСЛАХ</Text>
-      <Text accessibilityRole="header" style={styles.greeting}>Сайн байна уу, Nasa.</Text>
-      <Text style={styles.intro}>Юу асуух эсвэл амжуулахыг хүсэж байна?</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Chat эхлүүлэх"
-        onPress={() => router.navigate('/chat')} style={styles.chatCard}>
-        <Text style={styles.chatIcon}>✦</Text>
-        <Text style={styles.chatTitle}>Энхтэй ярилцах</Text>
-        <Text style={styles.chatDescription}>Асуултаа бичээд бодит хариу аваарай.</Text>
-        <View style={styles.chatAction}><Text style={styles.chatActionText}>Chat нээх  →</Text></View>
-      </Pressable>
-      <Text accessibilityRole="header" style={styles.section}>Хурдан эхлэх</Text>
-      <View style={styles.shortcuts}>{shortcuts.map((item) => <Pressable key={item.href}
-        accessibilityRole="link" accessibilityLabel={item.title} onPress={() => router.navigate(item.href)}
-        style={styles.shortcut}>
-        <Text style={styles.shortcutIcon}>{item.icon}</Text>
-        <Text style={styles.shortcutTitle}>{item.title}</Text>
-        <Text style={styles.shortcutCaption}>{item.caption}</Text>
-      </Pressable>)}</View>
-      <Pressable accessibilityRole="link" onPress={() => router.navigate('/account')} style={styles.accountLink}>
-        <Text style={styles.accountText}>{t('nav.account')}  →</Text>
-      </Pressable>
-    </ScrollView>
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.identity}>
+          
+          <View style={styles.identityText}>
+            <Text style={styles.hello}>{greetingName ? `Сайн байна уу, ${greetingName}.` : 'Сайн байна уу, Nasa.'}</Text>
+            <Text accessibilityRole="header" style={styles.title}>Энхтэй ярилцах</Text>
+          </View>
+        </View>
+
+        <View style={styles.composer}>
+          <TextInput accessibilityLabel="Энхэд бичих зурвас" multiline value={input} onChangeText={setInput}
+            placeholder="Энхээс юм асуух..." placeholderTextColor="#829AB1" style={styles.input}
+            returnKeyType="send" blurOnSubmit={false} onSubmitEditing={submit} />
+          <View style={styles.composerActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Дуугаар ярих" onPress={() => router.navigate('/chat')}
+              style={({ pressed }) => [styles.voice, pressed && styles.pressed]}>
+              <Text style={styles.voiceIcon}>🎙</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Илгээх" disabled={!input.trim()} onPress={submit}
+              style={({ pressed }) => [styles.send, !input.trim() && styles.disabled, pressed && styles.pressed]}>
+              <Text style={styles.sendText}>Илгээх  ↑</Text>
+            </Pressable>
+          </View>
+        </View>
+        <Text style={styles.hint}>Асуулт, тооцоо, баримт бичиг, ажлын төлөвлөгөөг эндээс эхлүүлнэ.</Text>
+      </ScrollView>
+    </KeyboardAvoidingView>
+
   </SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#F4F8FD' },
-  content: { paddingHorizontal: 18, paddingTop: 25, paddingBottom: 28 },
-  eyebrow: { color: '#0B57D0', fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },
-  greeting: { marginTop: 8, color: '#102A43', fontSize: 28, lineHeight: 36, fontWeight: '900' },
-  intro: { marginTop: 7, color: '#627D98', fontSize: 15, lineHeight: 22 },
-  chatCard: { marginTop: 24, minHeight: 205, borderRadius: 24, padding: 22, backgroundColor: '#0B57D0' },
-  chatIcon: { color: '#8FE8FA', fontSize: 27, fontWeight: '900' },
-  chatTitle: { marginTop: 8, color: '#FFFFFF', fontSize: 23, fontWeight: '900' },
-  chatDescription: { marginTop: 6, color: '#DFEAFF', fontSize: 14, lineHeight: 21 },
-  chatAction: { alignSelf: 'flex-start', marginTop: 19, minHeight: 44, justifyContent: 'center',
-    paddingHorizontal: 16, backgroundColor: '#FFFFFF', borderRadius: 13 },
-  chatActionText: { color: '#0B57D0', fontWeight: '900' },
-  section: { marginTop: 27, marginBottom: 12, color: '#102A43', fontSize: 18, fontWeight: '900' },
-  shortcuts: { flexDirection: 'row', gap: 9 },
-  shortcut: { flex: 1, minHeight: 112, padding: 12, borderRadius: 17, backgroundColor: '#FFFFFF',
-    borderWidth: 1, borderColor: '#DFEAF7' },
-  shortcutIcon: { color: '#0B57D0', fontSize: 23, fontWeight: '800' },
-  shortcutTitle: { marginTop: 6, color: '#102A43', fontSize: 13, fontWeight: '900' },
-  shortcutCaption: { marginTop: 3, color: '#7188A0', fontSize: 10, lineHeight: 14 },
-  accountLink: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', marginTop: 20 },
-  accountText: { color: '#0B57D0', fontWeight: '800' },
+  flex: { flex: 1 },
+  page: { flex: 1, backgroundColor: '#F5F7FA' },
+  content: { flexGrow: 1, justifyContent: 'flex-start', paddingHorizontal: 18, paddingTop: 48, paddingBottom: 42 },
+  identity: { marginBottom: 25 },
+  avatar: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#2F6FE4' },
+  avatarText: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
+  identityText: { flex: 1 },
+  hello: { color: '#7C90A8', fontSize: 14, lineHeight: 20 },
+  title: { marginTop: 2, color: '#0B1F33', fontSize: 29, lineHeight: 36, fontWeight: '900' },
+  composer: { padding: 14, borderRadius: 22, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DCE3EB',
+    shadowColor: '#0B1F33', shadowOpacity: 0.07, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  input: { minHeight: 92, maxHeight: 190, paddingHorizontal: 3, paddingTop: 2, paddingBottom: 12,
+    color: '#0B1F33', fontSize: 17, lineHeight: 25, textAlignVertical: 'top' },
+  composerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  voice: { minHeight: 46, paddingHorizontal: 14, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#F3F6F9', borderWidth: 1, borderColor: '#DFE6ED' },
+  voiceIcon: { color: '#2F6FE4', fontSize: 20 },
+  voiceText: { color: '#526D82', fontSize: 13, fontWeight: '800' },
+  send: { minHeight: 46, paddingHorizontal: 18, borderRadius: 14, justifyContent: 'center', backgroundColor: '#2F6FE4' },
+  sendText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  hint: { marginTop: 14, paddingHorizontal: 5, color: '#7188A0', fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  disabled: { opacity: 0.42 },
+  pressed: { opacity: 0.72 },
 });
