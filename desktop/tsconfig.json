@@ -13,6 +13,7 @@
   },
   "include": [
     "src/main.ts",
+    "src/launch-target.ts",
     "src/preload.ts",
     "src/navigation-policy.ts",
     "src/security-preferences.ts"
