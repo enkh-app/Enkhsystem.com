@@ -1,0 +1,26 @@
+appId: com.enkhsystems.enkhai
+productName: ENKH AI
+directories:
+  output: release
+files:
+  - dist/src/**/*
+  - dist/renderer/**/*
+  - assets/**/*
+  - package.json
+win:
+  executableName: ENKH AI
+  target:
+    - nsis
+  icon: assets/enkh.ico
+artifactName: ENKH-AI-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ENKH AI
+  installerIcon: assets/enkh.ico
+  uninstallerIcon: assets/enkh.ico
+  installerHeaderIcon: assets/enkh.ico

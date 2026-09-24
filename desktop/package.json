@@ -1,0 +1,32 @@
+{
+  "name": "enkh-desktop",
+  "version": "0.2.0",
+  "private": true,
+  "author": "ENKH Systems",
+  "description": "Hardened ENKH AI Windows desktop proof of concept",
+  "main": "dist/src/main.js",
+  "scripts": {
+    "build:icon": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-icon.ps1",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.renderer.json",
+    "build:renderer": "vite build --config vite.config.mjs --configLoader runner",
+    "build": "npm run typecheck && npm run build:renderer",
+    "test": "npm run build && node --test test/*.test.cjs",
+    "start": "npm run build && electron .",
+    "package:dir": "npm run test && electron-builder --win --dir",
+    "package:win": "npm run test && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.0.4",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "typescript": "~6.0.3",
+    "vite": "^7.1.7"
+  },
+  "dependencies": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  }
+}
