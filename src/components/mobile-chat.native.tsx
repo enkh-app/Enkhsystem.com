@@ -5,7 +5,7 @@ import * as Crypto from 'expo-crypto';
 import { fetch as expoFetch } from 'expo/fetch';
 import { AppHeader } from './app-header';
 import { useI18n } from '../i18n';
-import { mobileAccountKey, mobileAccessToken, mobileSignIn, mobileSignOut } from '../mobile/auth.native';
+import { mobileAccountKey, mobileAccessToken, mobileProfile, mobileSignIn, mobileSignOut } from '../mobile/auth.native';
 import { formatMobileAuthDiagnostic } from '../mobile/auth-diagnostic';
 import { createMobileChatApi, resolveMobileChatApiBase } from '../mobile/chat-api';
 import { MobileChatEngine, LocalChatState } from '../mobile/chat-engine';
@@ -13,7 +13,9 @@ import { nativeChatPersistence } from '../mobile/chat-storage.native';
 
 const empty: LocalChatState = { cursor: 0, conversations: [], messages: [], pendingTurns: [], pendingDeletes: [] };
 
-export default function NativeChatScreen() {
+type NativeChatScreenProps = { homeMode?: boolean };
+
+export default function NativeChatScreen({ homeMode = false }: NativeChatScreenProps) {
   const { t } = useI18n();
   const [account, setAccount] = useState<string | null>(null);
   const [state, setState] = useState<LocalChatState>(empty);
@@ -21,7 +23,16 @@ export default function NativeChatScreen() {
   const [input, setInput] = useState('');
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('');
+  const [greetingName, setGreetingName] = useState<string | null>(null);
   const engine = useRef<MobileChatEngine | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void mobileProfile()
+      .then((profile) => { if (active) setGreetingName(profile.greetingName); })
+      .catch(() => { /* Greeting remains safely generic. */ });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -87,10 +98,13 @@ export default function NativeChatScreen() {
   const pending = state.pendingTurns.length + state.pendingDeletes.length;
 
   return <SafeAreaView edges={['top']} style={styles.page}>
-    <AppHeader active="chat" />
+    <AppHeader active={homeMode ? 'home' : 'chat'} />
     <KeyboardAvoidingView style={styles.layout} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t('chat.title')}</Text>
+        {homeMode && visible.length === 0 ? <View style={styles.homeIdentity}>
+          <Text style={styles.hello}>{greetingName ? `Сайн байна уу, ${greetingName}.` : 'Сайн байна уу, Nasa.'}</Text>
+          <Text accessibilityRole="header" style={styles.homeTitle}>Энхтэй ярилцах</Text>
+        </View> : <Text style={styles.title}>{t('chat.title')}</Text>}
         {account ? <Pressable accessibilityRole="button" onPress={() => setConversation(Crypto.randomUUID())} style={styles.control}><Text>{t('chat.new')}</Text></Pressable> : null}
       </View>
       {!account ? <View style={styles.prompt}><Text style={styles.help}>Chat-аа төхөөрөмж хооронд хадгалахын тулд нэвтэрнэ үү.</Text>
@@ -124,6 +138,9 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#F4F8FD' }, layout: { flex: 1, padding: 16, gap: 10 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 26, fontWeight: '900', color: '#102A43' },
+  homeIdentity: { flex: 1, paddingTop: 22, paddingBottom: 8 },
+  hello: { color: '#7C90A8', fontSize: 14, lineHeight: 20 },
+  homeTitle: { marginTop: 2, color: '#0B1F33', fontSize: 29, lineHeight: 36, fontWeight: '900' },
   control: { minHeight: 44, justifyContent: 'center', backgroundColor: '#FFF', borderRadius: 12, paddingHorizontal: 14 },
   tabs: { flexGrow: 0, maxHeight: 48 }, messages: { flex: 1, backgroundColor: '#EAF2FA', borderRadius: 20 },
   messageContent: { padding: 16, gap: 12 }, bubble: { maxWidth: '86%', padding: 14, borderRadius: 17 },

@@ -1,4 +1,4 @@
-﻿const { test } = require('node:test');
+const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
@@ -12,13 +12,13 @@ const moduleResult = { exports: {} };
 new Function('exports', 'module', code)(moduleResult.exports, moduleResult);
 const { nativePrimaryRoutes, nativePrimaryRoute } = moduleResult.exports;
 
-test('native bottom navigation has five reachable primary destinations', () => {
+test('native bottom navigation has four reachable primary destinations and legacy Chat selects Home', () => {
   assert.deepEqual(nativePrimaryRoutes.map((item) => [item.label, item.href]), [
-    ['Нүүр', '/'], ['Чат', '/chat'], ['Үйлдэл', '/actions'],
-    ['Мэдлэг', '/knowledge'], ['Би', '/account'],
+    ['Нүүр', '/'], ['Үйлдэл', '/actions'], ['Мэдлэг', '/knowledge'], ['Би', '/account'],
   ]);
-  for (const pathname of ['/', '/chat', '/actions', '/knowledge', '/account'])
+  for (const pathname of ['/', '/actions', '/knowledge', '/account'])
     assert.equal(nativePrimaryRoute(pathname), pathname);
+  assert.equal(nativePrimaryRoute('/chat'), '/');
   assert.equal(nativePrimaryRoute('/tools/calculation'), '/actions');
   assert.equal(nativePrimaryRoute('/action-document'), '/actions');
   assert.equal(nativePrimaryRoute('/search'), '/knowledge');
@@ -40,9 +40,17 @@ test('native Home is Chat-first and existing web dashboard remains selected on w
   const native = read('src/components/mobile-home.native.tsx');
   assert.match(route, /Platform\.OS === 'web' \? <WebHomeScreen \/> : <MobileHome \/>/);
   assert.match(route, /enkhStructuredData/);
-  assert.match(native, /Сайн байна уу, Nasa\./);
-  assert.match(native, /router\.navigate\('\/chat'\)/);
-  for (const href of ['/chat', '/actions', '/knowledge']) assert.ok(native.includes(`href: '${href}'`));
+  assert.match(native, /<MobileChatScreen homeMode \/>/);
+  const chat = read('src/components/mobile-chat.native.tsx');
+  assert.match(chat, /Сайн байна уу, Nasa\./);
+  assert.match(chat, /new MobileChatEngine\(nativeChatPersistence/);
+  assert.match(chat, /retryPending\(\)/);
+  assert.match(chat, /await engine\.current\?\.send/);
+  assert.doesNotMatch(native, /Дуугаар/);
+  const legacy = read('src/app/chat.tsx');
+  assert.match(legacy, /Platform\.OS === 'web' \? <WebChatScreen \/> : <MobileHome \/>/);
+  assert.match(read('src/components/mobile-chat.tsx'), /homeMode\?: boolean/);
+  assert.match(read('src/components/mobile-chat.web.tsx'), /homeMode\?: boolean/);
 });
 
 test('native Actions and Knowledge reuse working contracts without fabricated results', () => {

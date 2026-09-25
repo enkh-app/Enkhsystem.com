@@ -9,10 +9,10 @@ import { SeoHead } from '../components/seo-head';
 import { addEntry, contextFor, createSession, emptyWorkspace, entriesFor, loadWorkspace, saveWorkspace, WorkspaceEntry, WorkspaceState } from '../workspace-store';
 import { backgroundWorkspaceSync } from '../workspace-sync';
 import { useI18n } from '../i18n';
-import MobileChatScreen from '../components/mobile-chat';
+import MobileHome from '../components/mobile-home';
 
 export default function ChatScreen() {
-  return Platform.OS === 'web' ? <WebChatScreen /> : <MobileChatScreen />;
+  return Platform.OS === 'web' ? <WebChatScreen /> : <MobileHome />;
 }
 
 function WebChatScreen() {
