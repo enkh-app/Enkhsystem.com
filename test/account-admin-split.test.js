@@ -39,9 +39,21 @@ test('account stays owner-scoped while admin is direct-API protected and noindex
 
 test('admin labels are complete in all three dictionaries',()=>{
   const source=read('src/i18n.tsx');
-  for(const key of ['nav.admin','admin.title','admin.readOnly','admin.accounts','admin.reminders','admin.operations','admin.data','admin.users','admin.usersHelp','admin.userStatus','admin.lastActivity']){
+  for(const key of ['nav.admin','admin.title','admin.readOnly','admin.overview','admin.systemStatus','admin.management','admin.healthy','admin.disconnected','admin.pageContent','admin.dataDashboard','admin.manageUsersHelp','admin.managePageHelp','admin.manageDataHelp','admin.unavailableAction','admin.users','admin.usersHelp','admin.userStatus','admin.lastActivity']){
     assert.equal((source.match(new RegExp(`'${key.replace('.','\\.')}'`,'g'))||[]).length,3,key);
   }
+});
+
+test('admin overview uses compact localized hierarchy and bounded status badges without changing authorization',()=>{
+  const screen=read('src/app/admin/index.tsx');
+  for(const key of ['admin.overview','admin.systemStatus','admin.management']) assert.ok(screen.includes(`t('${key}')`));
+  assert.match(screen,/numberOfLines=\{1\}/);
+  assert.match(screen,/ellipsizeMode="tail"/);
+  assert.match(screen,/router\.push\('\/admin\/users'/);
+  assert.match(screen,/router\.push\('\/admin\/data'/);
+  assert.match(screen,/accessibilityState=\{\{ disabled \}\}/);
+  assert.match(screen,/getAdminOverview/);
+  assert.doesNotMatch(screen,/read:admin-data|manage:page-content|email.*admin|admin.*email/i);
 });
 
 test('admin users uses credentialed read-only API and validates the list',async()=>{
