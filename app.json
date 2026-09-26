@@ -44,7 +44,14 @@
         }
       ],
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "ENKH AI-д асуултаа дуугаар хэлэхийн тулд микрофон ашиглахыг зөвшөөрнө үү.",
+          "speechRecognitionPermission": "ENKH AI-д таны хэлсэн асуултыг бичвэр болгохыг зөвшөөрнө үү."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
