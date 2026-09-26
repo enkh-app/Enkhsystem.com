@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
+import * as Speech from 'expo-speech';
 import { fetch as expoFetch } from 'expo/fetch';
 import { AppHeader } from './app-header';
 import { useI18n } from '../i18n';
@@ -23,8 +24,22 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
   const [input, setInput] = useState('');
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('');
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [greetingName, setGreetingName] = useState<string | null>(null);
   const engine = useRef<MobileChatEngine | null>(null);
+
+  useEffect(() => () => { void Speech.stop(); }, []);
+
+  const toggleSpeech = async (id: string, content: string) => {
+    await Speech.stop();
+    if (speakingId === id) { setSpeakingId(null); return; }
+    setSpeakingId(id);
+    try {
+      Speech.speak(content, { language: 'mn-MN',
+        onDone: () => setSpeakingId(null), onStopped: () => setSpeakingId(null),
+        onError: () => { setSpeakingId(null); setNotice('Дуут уншилт боломжгүй байна.'); } });
+    } catch { setSpeakingId(null); setNotice('Дуут уншилт боломжгүй байна.'); }
+  };
 
   useEffect(() => {
     let active = true;
@@ -117,6 +132,11 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
           {visible.length === 0 ? <Text style={styles.help}>{t('chat.empty')}</Text> : null}
           {visible.map((message) => <View key={message.id} style={[styles.bubble, message.role === 'user' ? styles.user : styles.assistant]}>
             <Text style={message.role === 'user' ? styles.userText : styles.assistantText}>{message.content}</Text>
+            {message.role === 'assistant' && message.content ? <Pressable accessibilityRole="button"
+              accessibilityLabel={speakingId === message.id ? 'Уншилтыг зогсоох' : 'Хариултыг дуугаар унших'}
+              onPress={() => void toggleSpeech(message.id, message.content)} style={styles.speakControl}>
+              <Text style={styles.speakText}>{speakingId === message.id ? '■ Зогсоох' : '🔊 Сонсох'}</Text>
+            </Pressable> : null}
             {message.status !== 'sent' ? <Text style={styles.pending}>{message.status === 'failed' ? 'Илгээгдээгүй' : 'Хүлээгдэж байна'}</Text> : null}
           </View>)}
           {working ? <ActivityIndicator /> : null}
@@ -147,6 +167,8 @@ const styles = StyleSheet.create({
   user: { alignSelf: 'flex-end', backgroundColor: '#0B57D0' }, assistant: { alignSelf: 'flex-start', backgroundColor: '#FFF' },
   userText: { color: '#FFF', fontSize: 16, lineHeight: 24 }, assistantText: { color: '#243B53', fontSize: 16, lineHeight: 24 },
   pending: { color: '#D7E4F3', fontSize: 11, marginTop: 5 }, prompt: { gap: 14, marginTop: 20 },
+  speakControl: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  speakText: { color: '#0B57D0', fontWeight: '700' },
   help: { color: '#627D98', fontSize: 14 }, button: { minHeight: 48, justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: 17, backgroundColor: '#0B57D0', borderRadius: 13 }, buttonText: { color: '#FFF', fontWeight: '800' },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 8, backgroundColor: '#FFF', borderRadius: 18 },
