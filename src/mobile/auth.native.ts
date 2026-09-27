@@ -9,6 +9,7 @@ import { AuthGenerationGuard, MOBILE_LOGOUT_REDIRECT, mobileLogoutUrl,
 
 const TOKEN_KEY = 'enkh.mobile.auth.v1';
 const PREFERRED_NAME_KEY = 'enkh.mobile.preferred-name.v1';
+const MOBILE_AUTH_SCOPES = ['openid', 'profile', 'offline_access', 'use:chat', 'read:admin-data'];
 type StoredTokens = { accessToken: string; refreshToken?: string; expiresAt: number; displayName?: string };
 export type MobileProfile = { signedIn: boolean; displayName: string | null; preferredName: string | null; greetingName: string | null };
 let pendingRefresh: Promise<string> | null = null;
@@ -83,7 +84,7 @@ export async function mobileSignIn(): Promise<string> {
   const request = await atMobileAuthStage('auth_request', () => new AuthSession.AuthRequest({
     clientId: settings.clientId, redirectUri: redirect,
     responseType: AuthSession.ResponseType.Code, usePKCE: true,
-    scopes: ['openid', 'profile', 'offline_access'], extraParams: { audience: settings.audience },
+    scopes: MOBILE_AUTH_SCOPES, extraParams: { audience: settings.audience },
   }), redirectMatch);
   const response = await atMobileAuthStage('browser_prompt', async () => {
     const result = await request.promptAsync(discovery);

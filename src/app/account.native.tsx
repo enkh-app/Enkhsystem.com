@@ -3,8 +3,12 @@ import { router, useFocusEffect } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/app-header';
-import { mobileAccountKey, mobileProfile, mobileSetPreferredName, mobileSignOut } from '../mobile/auth.native';
+import { mobileAccessToken, mobileAccountKey, mobileProfile, mobileSetPreferredName, mobileSignIn, mobileSignOut } from '../mobile/auth.native';
+import { formatMobileAuthDiagnostic } from '../mobile/auth-diagnostic';
+import { createMobileAdminApi, mobileAdminAccessAllowed } from '../mobile/admin-api';
 import { useI18n } from '../i18n';
+
+const adminApi = createMobileAdminApi(mobileAccessToken);
 
 export default function NativeAccountScreen() {
   const { t } = useI18n();
@@ -12,8 +16,10 @@ export default function NativeAccountScreen() {
   const [accountName, setAccountName] = useState<string | null>(null);
   const [preferredName, setPreferredName] = useState('');
   const [saved, setSaved] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [notice, setNotice] = useState('');
+  const [showAdmin, setShowAdmin] = useState(false);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -22,6 +28,10 @@ export default function NativeAccountScreen() {
       setSignedIn(!!accountKey);
       setAccountName(profile.displayName);
       setPreferredName(profile.preferredName || '');
+      if (!accountKey) { setShowAdmin(false); return; }
+      void mobileAdminAccessAllowed(adminApi).then((allowed) => {
+        if (active) setShowAdmin(allowed);
+      });
     });
     return () => { active = false; };
   }, []));
@@ -31,9 +41,24 @@ export default function NativeAccountScreen() {
     setPreferredName(value || '');
     setSaved(true);
   };
+  const signIn = async () => {
+    setSigningIn(true); setNotice('');
+    try {
+      const accountKey = await mobileSignIn();
+      const profile = await mobileProfile();
+      setSignedIn(!!accountKey);
+      setAccountName(profile.displayName);
+      setPreferredName(profile.preferredName || '');
+      setShowAdmin(await mobileAdminAccessAllowed(adminApi));
+    } catch (error) {
+      setNotice(`Нэвтрэх үйлдэл амжилтгүй боллоо. ${formatMobileAuthDiagnostic(error, 'chat_pull')}`);
+    } finally {
+      setSigningIn(false);
+    }
+  };
   const signOut = async () => {
     setSigningOut(true); setNotice('');
-    try { await mobileSignOut(() => { setSignedIn(false); setAccountName(null); }); }
+    try { await mobileSignOut(() => { setSignedIn(false); setAccountName(null); setShowAdmin(false); }); }
     catch { setNotice('Гарах үйлдэл амжилтгүй боллоо.'); }
     finally { setSigningOut(false); }
   };
@@ -55,10 +80,14 @@ export default function NativeAccountScreen() {
           <Text style={styles.saveButtonText}>Нэр хадгалах</Text>
         </Pressable>
         {saved ? <Text accessibilityLiveRegion="polite" style={styles.saved}>Хадгаллаа. Нүүр хуудас дээр шинэ нэр харагдана.</Text> : null}
-        <Text style={styles.body}>Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана. Нэвтрэх болон гарах үйлдлийг Chat хэсгээс удирдана.</Text>
+        <Text style={styles.body}>Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана. Нэвтрэх болон гарах үйлдлийг эндээс удирдана.</Text>
         <Pressable accessibilityRole="link" onPress={() => router.navigate('/chat')} style={styles.chatButton}>
           <Text style={styles.chatButtonText}>{t('nav.chat')}  →</Text>
         </Pressable>
+        {!signedIn ? <Pressable accessibilityRole="button" disabled={signingIn}
+          onPress={() => void signIn()} style={styles.saveButton}>
+          <Text style={styles.saveButtonText}>{signingIn ? 'Нэвтэрч байна…' : 'Нэвтрэх'}</Text>
+        </Pressable> : null}
         {signedIn ? <Pressable accessibilityRole="button" disabled={signingOut}
           onPress={() => void signOut()} style={styles.signOutButton}>
           <Text style={styles.signOutText}>{t('account.signOut')}</Text>
@@ -73,6 +102,9 @@ export default function NativeAccountScreen() {
         <Pressable accessibilityRole="link" onPress={() => router.navigate('/tools')} style={styles.moreLink}>
           <Text style={styles.moreIcon}>∑</Text><Text style={styles.moreText}>Tools</Text><Text style={styles.moreArrow}>›</Text>
         </Pressable>
+        {showAdmin ? <Pressable accessibilityRole="link" onPress={() => router.navigate('/admin')} style={styles.moreLink}>
+          <Text style={styles.moreIcon}>A</Text><Text style={styles.moreText}>Админ</Text><Text style={styles.moreArrow}>›</Text>
+        </Pressable> : null}
       </View>
     </ScrollView>
   </SafeAreaView>;
