@@ -18,7 +18,7 @@ function load(name) {
   return module.exports;
 }
 const { mobileAuthConfig } = load('auth-config');
-const { createMobileChatApi, resolveMobileChatApiBase, ChatApiError } = load('chat-api');
+const { createGuestMobileChatApi, createMobileChatApi, resolveMobileChatApiBase, ChatApiError } = load('chat-api');
 const { MobileChatEngine } = load('chat-engine');
 const id = (number) => `${String(number).padStart(8, '0')}-1111-4111-8111-111111111111`;
 
@@ -88,6 +88,32 @@ test('API uses bearer only for ENKH hostname and rejects malformed/oversized res
   assert.equal(calls[0].options.headers.Authorization, 'Bearer fixture-token');
   assert.equal(calls[0].options.headers['X-Enkh-Client-Type'], 'android');
   assert.equal(JSON.stringify(calls[0].options).includes('clientSecret'), false);
+});
+
+test('guest Chat uses a bounded opaque token only for the configured ENKH origin', async () => {
+  const calls = [];
+  const api = createGuestMobileChatApi(async () => 'a'.repeat(43), async (url, options) => {
+    calls.push({ url, options });
+    return { ok: true, json: async () => ({ success: true, cursor: 0 }) };
+  });
+  await api.sync({ conversations: [], messages: [] });
+  assert.equal(calls[0].url, 'https://api.enkhsystems.com/api/chat/sync');
+  assert.equal(calls[0].options.headers.Authorization, `Guest ${'a'.repeat(43)}`);
+  assert.equal(calls[0].options.redirect, 'error');
+  await assert.rejects(createGuestMobileChatApi(async () => 'bad', fetch).sync({ conversations: [], messages: [] }),
+    (error) => error instanceof ChatApiError && error.code === 'MOBILE_GUEST_SESSION_INVALID');
+});
+
+test('native guest session reuses SecureStore and deletes its token only after successful claim', () => {
+  const source = readFileSync(join(__dirname, '..', 'src', 'mobile', 'guest-chat.native.ts'), 'utf8');
+  const screen = readFileSync(join(__dirname, '..', 'src', 'components', 'mobile-chat.native.tsx'), 'utf8');
+  assert.match(source, /SecureStore\.getItemAsync\(GUEST_TOKEN_KEY\)/);
+  assert.match(source, /SecureStore\.setItemAsync\(GUEST_TOKEN_KEY, data\.guestToken\)/);
+  assert.match(source, /\/api\/chat\/guest\/claim/);
+  assert.ok(source.indexOf('data.success !== true') < source.lastIndexOf('SecureStore.deleteItemAsync(GUEST_TOKEN_KEY)'));
+  assert.doesNotMatch(source, /AsyncStorage|localStorage|console\.(log|error)/);
+  assert.match(screen, /claimMobileGuestChat/);
+  assert.match(screen, /mobileGuestAccountKey/);
 });
 
 test('all six authenticated Chat paths preserve cursors and never call public actions', async () => {

@@ -29,13 +29,30 @@ function validateTurn(data: unknown): ChatTurnResponse {
 
 export function createMobileChatApi(token: () => Promise<string>, transport: typeof fetch = fetch,
   apiBase = PRODUCTION_CHAT_API, clientType: 'ios' | 'android' = 'ios') {
-  if (apiBase !== PRODUCTION_CHAT_API && apiBase !== TEST_CHAT_API) throw new Error('INVALID_CHAT_API_BASE');
-  async function request(path: string, method = 'GET', body?: unknown): Promise<unknown> {
+  return createAuthorizedChatApi(async () => {
     const accessToken = await token();
     if (!accessToken || /[\r\n]/.test(accessToken)) throw new ChatApiError(401, 'MOBILE_SIGN_IN_REQUIRED');
+    return `Bearer ${accessToken}`;
+  }, transport, apiBase, clientType);
+}
+
+export function createGuestMobileChatApi(token: () => Promise<string>, transport: typeof fetch = fetch,
+  apiBase = PRODUCTION_CHAT_API, clientType: 'ios' | 'android' = 'ios') {
+  return createAuthorizedChatApi(async () => {
+    const guestToken = await token();
+    if (!/^[A-Za-z0-9_-]{43}$/.test(guestToken)) throw new ChatApiError(401, 'MOBILE_GUEST_SESSION_INVALID');
+    return `Guest ${guestToken}`;
+  }, transport, apiBase, clientType);
+}
+
+function createAuthorizedChatApi(authorization: () => Promise<string>, transport: typeof fetch,
+  apiBase: string, clientType: 'ios' | 'android') {
+  if (apiBase !== PRODUCTION_CHAT_API && apiBase !== TEST_CHAT_API) throw new Error('INVALID_CHAT_API_BASE');
+  async function request(path: string, method = 'GET', body?: unknown): Promise<unknown> {
+    const auth = await authorization();
     let response: Response;
     try { response = await transport(`${apiBase}${path}`, { method, redirect: 'error',
-      headers: { Accept: 'application/json', Authorization: `Bearer ${accessToken}`,
+      headers: { Accept: 'application/json', Authorization: auth,
         'X-Enkh-Client-Type': clientType, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) }); }
     catch { throw new ChatApiError(0, 'NETWORK_UNAVAILABLE'); }

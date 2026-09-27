@@ -7,7 +7,8 @@ import { AppHeader } from './app-header';
 import { useI18n } from '../i18n';
 import { mobileAccountKey, mobileAccessToken, mobileProfile, mobileSignIn, mobileSignOut } from '../mobile/auth.native';
 import { formatMobileAuthDiagnostic } from '../mobile/auth-diagnostic';
-import { createMobileChatApi, resolveMobileChatApiBase } from '../mobile/chat-api';
+import { createGuestMobileChatApi, createMobileChatApi, resolveMobileChatApiBase } from '../mobile/chat-api';
+import { claimMobileGuestChat, mobileGuestAccountKey, mobileGuestToken } from '../mobile/guest-chat.native';
 import { MobileChatEngine, LocalChatState } from '../mobile/chat-engine';
 import { nativeChatPersistence } from '../mobile/chat-storage.native';
 
@@ -39,13 +40,21 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
     setWorking(true);
     void (async () => {
       try {
-        const client = createMobileChatApi(mobileAccessToken, expoFetch,
-          resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_CHAT_API_URL),
-          Platform.OS === 'android' ? 'android' : 'ios');
+        const apiBase = resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_CHAT_API_URL);
+        const clientType = Platform.OS === 'android' ? 'android' : 'ios';
+        const signedInKey = await mobileAccountKey();
+        if (signedInKey) {
+          try { await claimMobileGuestChat(mobileAccessToken, expoFetch, apiBase, clientType); }
+          catch { /* Keep the SecureStore guest token and retry transfer on the next Chat startup. */ }
+        }
+        const client = signedInKey
+          ? createMobileChatApi(mobileAccessToken, expoFetch, apiBase, clientType)
+          : createGuestMobileChatApi(() => mobileGuestToken(expoFetch, apiBase, clientType),
+            expoFetch, apiBase, clientType);
         const instance = new MobileChatEngine(nativeChatPersistence, client, Crypto.randomUUID,
           (next) => { if (active) setState(next); });
         engine.current = instance;
-        const key = await mobileAccountKey();
+        const key = signedInKey || mobileGuestAccountKey;
         if (!active) return;
         setAccount(key);
         await instance.switchAccount(key);
