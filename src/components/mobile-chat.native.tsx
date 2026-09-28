@@ -3,6 +3,8 @@ import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import * as Speech from 'expo-speech';
+import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
+import { File } from 'expo-file-system';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { fetch as expoFetch } from 'expo/fetch';
 import { AppHeader } from './app-header';
@@ -12,6 +14,7 @@ import { formatMobileAuthDiagnostic } from '../mobile/auth-diagnostic';
 import { createMobileChatApi, resolveMobileChatApiBase } from '../mobile/chat-api';
 import { MobileChatEngine, LocalChatState } from '../mobile/chat-engine';
 import { nativeChatPersistence } from '../mobile/chat-storage.native';
+import { transcribeMobileRecording, VoiceServerNotReadyError } from '../mobile/voice-api';
 
 const empty: LocalChatState = { cursor: 0, conversations: [], messages: [], pendingTurns: [], pendingDeletes: [] };
 
@@ -28,9 +31,12 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [listening, setListening] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [greetingName, setGreetingName] = useState<string | null>(null);
   const engine = useRef<MobileChatEngine | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const dictationPrefix = useRef('');
   const knownAssistantIds = useRef<Set<string> | null>(null);
 
@@ -40,14 +46,62 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
     const transcript = event.results[0]?.transcript?.trim();
     if (transcript) setInput(`${dictationPrefix.current}${transcript}`);
   });
-  useSpeechRecognitionEvent('error', () => {
+  useSpeechRecognitionEvent('error', (event) => {
     setListening(false);
-    setNotice('Яриаг таньж чадсангүй. Бичгээр оруулж эсвэл дахин оролдоно уу.');
+    if (event.error === 'aborted') return;
+    if (event.error === 'language-not-supported' || event.error === 'service-not-allowed') {
+      setNotice('Энэ утас монгол яриаг танихгүй байна. Серверийн монгол яриа танилтыг холбох шаардлагатай. Түр бичгээр асуултаа оруулна уу.');
+    } else if (event.error === 'no-speech' || event.error === 'speech-timeout') {
+      setNotice('Яриа сонсогдсонгүй. Микрофондоо ойр ярьж дахин оролдоно уу.');
+    } else if (event.error === 'not-allowed') {
+      setNotice('Микрофон болон яриа таних зөвшөөрлийг Settings-ээс шалгана уу.');
+    } else {
+      setNotice(`Яриаг таньж чадсангүй (${event.error}${event.code === undefined ? '' : `, ${event.code}`}). Дахин оролдоно уу.`);
+    }
   });
 
-  useEffect(() => () => { void Speech.stop(); ExpoSpeechRecognitionModule.abort(); }, []);
+  useEffect(() => () => { void Speech.stop(); ExpoSpeechRecognitionModule.abort(); void recorder.stop().catch(() => {}); }, [recorder]);
+
+  const toggleServerRecording = async () => {
+    if (recording) {
+      setRecording(false);
+      setTranscribing(true);
+      try {
+        await recorder.stop();
+        if (!recorder.uri) throw new Error('RECORDING_UNAVAILABLE');
+        const transcript = await transcribeMobileRecording(recorder.uri);
+        setInput(`${dictationPrefix.current}${transcript}`);
+        inputRef.current?.focus();
+      } catch (error) {
+        setNotice(error instanceof VoiceServerNotReadyError
+          ? 'Монгол яриа таних сервер хараахан холбогдоогүй байна. Түр бичгээр асуултаа оруулна уу.'
+          : 'Бичлэгийг бичвэр болгож чадсангүй. Дахин оролдоно уу.');
+      } finally {
+        if (recorder.uri) { try { new File(recorder.uri).delete(); } catch { /* Cache cleanup is best effort. */ } }
+        setTranscribing(false);
+        await setAudioModeAsync({ allowsRecording: false }).catch(() => {});
+      }
+      return;
+    }
+    setNotice('');
+    try {
+      const permission = await requestRecordingPermissionsAsync();
+      if (!permission.granted) { setNotice('Микрофоны зөвшөөрлийг Settings-ээс нээнэ үү.'); return; }
+      await Speech.stop(); setSpeakingId(null);
+      dictationPrefix.current = input.trim() ? `${input.trim()} ` : '';
+      Keyboard.dismiss();
+      await setAudioModeAsync({ allowsRecording: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setRecording(true);
+    } catch { setNotice('Дуу бичлэгийг эхлүүлж чадсангүй.'); await setAudioModeAsync({ allowsRecording: false }).catch(() => {}); }
+  };
 
   const toggleDictation = async () => {
+    if (recording || process.env.EXPO_PUBLIC_ENKH_VOICE_API_ENABLED === 'true') {
+      await toggleServerRecording();
+      return;
+    }
     if (listening) {
       ExpoSpeechRecognitionModule.stop();
       inputRef.current?.focus();
@@ -60,6 +114,13 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
       if (!permission.granted) {
         setNotice('Микрофон болон яриа таних зөвшөөрлийг утасны Settings-ээс нээнэ үү.');
         return;
+      }
+      if (Platform.OS === 'ios') {
+        const supported = await ExpoSpeechRecognitionModule.getSupportedLocales({});
+        if (!supported.locales.some((locale) => locale.toLowerCase() === 'mn-mn')) {
+          setNotice('Энэ iPhone монгол яриаг танихгүй байна. Серверийн монгол яриа танилтыг холбох шаардлагатай. Түр бичгээр асуултаа оруулна уу.');
+          return;
+        }
       }
       dictationPrefix.current = input.trim() ? `${input.trim()} ` : '';
       Keyboard.dismiss();
@@ -148,7 +209,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
   };
   const send = async () => {
     const text = input.trim();
-    if (!text || !account || working) return;
+    if (!text || !account || working || recording || transcribing) return;
     setInput(''); setWorking(true); setNotice('');
     if (listening) { ExpoSpeechRecognitionModule.stop(); setListening(false); }
     await Speech.stop(); setSpeakingId(null);
@@ -204,16 +265,18 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
         {pending ? <Pressable accessibilityRole="button" onPress={() => void retry()} style={styles.control}>
           <Text>Хүлээгдэж буй {pending} · Дахин оролдох</Text></Pressable> : null}
         <View style={styles.composer}>
-          <Pressable accessibilityRole="button" accessibilityLabel={listening ? 'Яриаг зогсоож бичих' : 'Асуултаа дуугаар хэлэх'}
-            disabled={working} onPress={() => void toggleDictation()} style={[styles.dictation, listening && styles.dictationActive]}>
-            <Text style={styles.dictationText}>{listening ? '⌨' : '🎙'}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={recording ? 'Бичлэгийг дуусгаж бичвэр болгох' : listening ? 'Яриаг зогсоож бичих' : 'Асуултаа дуугаар хэлэх'}
+            disabled={working || transcribing} onPress={() => void toggleDictation()} style={[styles.dictation, (listening || recording) && styles.dictationActive]}>
+            <Text style={styles.dictationText}>{listening ? '⌨' : recording ? '■' : '🎙'}</Text>
           </Pressable>
           <TextInput ref={inputRef} multiline value={input} onChangeText={setInput}
           accessibilityLabel={t('chat.placeholder')} placeholder={t('chat.placeholder')}
-          style={styles.input} /><Pressable accessibilityRole="button" disabled={!input.trim() || working}
+          style={styles.input} /><Pressable accessibilityRole="button" disabled={!input.trim() || working || recording || transcribing}
           onPress={() => void send()} style={styles.button}><Text style={styles.buttonText}>↑</Text></Pressable></View>
         {listening ? <Text accessibilityLiveRegion="polite" style={styles.help}>Сонсож байна… Яриагаа дуусгаад ↑ Илгээх дарна уу.</Text> : null}
-        <Pressable accessibilityRole="button" disabled={working} onPress={() => void signOut()} style={styles.signOut}><Text>Гарах</Text></Pressable>
+        {recording ? <Text accessibilityLiveRegion="polite" style={styles.help}>Бичиж байна… ■ дарж дуусгаад танигдсан бичвэрийг шалгана уу.</Text> : null}
+        {transcribing ? <Text accessibilityLiveRegion="polite" style={styles.help}>Яриаг бичвэр болгож байна…</Text> : null}
+        <Pressable accessibilityRole="button" disabled={working || recording || transcribing} onPress={() => void signOut()} style={styles.signOut}><Text>Гарах</Text></Pressable>
       </>}
       {!!notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
     </KeyboardAvoidingView>
