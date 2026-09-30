@@ -72,7 +72,7 @@ test('redirect comparison emits only a boolean, never the raw redirect or OAuth 
 
 test('native sign-in wraps each operation and UI never displays raw error details', () => {
   const auth = readFileSync(join(__dirname, '..', 'src', 'mobile', 'auth.native.ts'), 'utf8');
-  const screen = readFileSync(join(__dirname, '..', 'src', 'components', 'mobile-chat.native.tsx'), 'utf8');
+  const screen = readFileSync(join(__dirname, '..', 'src', 'app', 'account.native.tsx'), 'utf8');
   for (const stage of ['config', 'secure_store', 'discovery', 'auth_request', 'browser_prompt',
     'token_exchange', 'token_validation', 'secure_store_save'])
     assert.match(auth, new RegExp(`atMobileAuthStage\\('${stage}'`));

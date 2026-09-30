@@ -55,8 +55,8 @@ test('Account and Chat use the shared sign-out without deleting account-scoped S
   const account = readFileSync(join(__dirname, '..', 'src', 'app', 'account.native.tsx'), 'utf8');
   const chat = readFileSync(join(__dirname, '..', 'src', 'components', 'mobile-chat.native.tsx'), 'utf8');
   const storage = readFileSync(join(__dirname, '..', 'src', 'mobile', 'chat-storage.native.ts'), 'utf8');
-  assert.match(account, /mobileSignOut/); assert.match(chat, /mobileSignOut/);
-  assert.match(chat, /switchAccount\(null\)/); assert.match(auth, /SecureStore\.deleteItemAsync\(TOKEN_KEY\)/);
+  assert.match(account, /mobileSignOut/); assert.doesNotMatch(chat, /mobileSignOut/);
+  assert.doesNotMatch(chat, /switchAccount\(null\)/); assert.match(auth, /SecureStore\.deleteItemAsync\(TOKEN_KEY\)/);
   assert.doesNotMatch(storage, /DELETE FROM chat_account_state|DROP TABLE/);
   assert.doesNotMatch(auth + account + chat, /console\.(log|error)|error_description/);
 });
