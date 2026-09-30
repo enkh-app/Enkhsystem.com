@@ -141,15 +141,23 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
           {pending ? <Pressable accessibilityRole="button" onPress={() => void retry()} style={styles.retry}>
             <Text style={styles.retryText}>Хүлээгдэж буй {pending} · Дахин оролдох</Text>
           </Pressable> : null}
-          {!!notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
+          {!!notice && <View style={styles.notice}>
+            <Text accessibilityLiveRegion="polite" numberOfLines={2} style={styles.noticeText}>{notice}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Chat-ийг дахин ачаалах"
+              disabled={working} onPress={() => void retry()} style={styles.noticeRetry}>
+              <Text style={styles.noticeRetryText}>Дахин</Text>
+            </Pressable>
+          </View>}
           <View style={styles.composer}>
             <Pressable accessibilityRole="button" accessibilityLabel="Дуу оруулах (удахгүй)" disabled
-              style={styles.micButton}><Text style={styles.micIcon}>⌁</Text></Pressable>
+              style={styles.micButton}><Text accessibilityElementsHidden style={styles.micIcon}>🎤</Text></Pressable>
             <TextInput multiline value={input} onChangeText={setInput} accessibilityLabel={t('chat.placeholder')}
-              placeholder={t('chat.placeholder')} returnKeyType="default" style={styles.input} />
+              placeholder={t('chat.placeholder')} placeholderTextColor="#627D98"
+              returnKeyType="default" style={styles.input} />
             <Pressable accessibilityRole="button" disabled={!input.trim() || working}
-              onPress={() => void send()} style={[styles.sendButton, (!input.trim() || working) && styles.buttonDisabled]}>
-              <Text style={styles.buttonText}>{t('chat.send')}</Text>
+              accessibilityLabel={t('chat.send')} onPress={() => void send()}
+              style={[styles.sendButton, (!input.trim() || working) && styles.buttonDisabled]}>
+              <Text accessibilityElementsHidden style={styles.sendIcon}>↑</Text>
             </Pressable>
           </View>
         </>}
@@ -158,15 +166,15 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#F4F8FD' },
-  layout: { flex: 1, minHeight: 0, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 6, gap: 6 },
-  messages: { flex: 1, minHeight: 0, backgroundColor: '#EAF2FA', borderRadius: 16 },
-  messageContent: { padding: 12, gap: 10 },
+  page: { flex: 1, backgroundColor: '#FFFFFF' },
+  layout: { flex: 1, minHeight: 0, paddingHorizontal: 8, paddingTop: 5, paddingBottom: 4, gap: 5 },
+  messages: { flex: 1, minHeight: 0, backgroundColor: '#FFFFFF' },
+  messageContent: { paddingHorizontal: 8, paddingVertical: 9, gap: 10 },
   emptyContent: { flexGrow: 1, justifyContent: 'center' },
-  emptyState: { alignItems: 'center', paddingHorizontal: 24, gap: 7 },
-  hello: { color: '#7C90A8', fontSize: 14, lineHeight: 20 },
-  emptyTitle: { color: '#0B1F33', fontSize: 25, lineHeight: 32, fontWeight: '900', textAlign: 'center' },
-  help: { color: '#627D98', fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  emptyState: { alignItems: 'center', paddingHorizontal: 28, gap: 5 },
+  hello: { color: '#829AB1', fontSize: 13, lineHeight: 18 },
+  emptyTitle: { color: '#486581', fontSize: 20, lineHeight: 26, fontWeight: '800', textAlign: 'center' },
+  help: { color: '#829AB1', fontSize: 13, lineHeight: 18, textAlign: 'center' },
   messageShell: { maxWidth: '85%', gap: 3 },
   userShell: { alignSelf: 'flex-end', alignItems: 'flex-end' },
   assistantShell: { alignSelf: 'flex-start', alignItems: 'flex-start' },
@@ -187,17 +195,21 @@ const styles = StyleSheet.create({
   retry: { minHeight: 34, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 10,
     borderRadius: 11, backgroundColor: '#FFFFFF' },
   retryText: { color: '#49637F', fontSize: 13, fontWeight: '700' },
-  notice: { maxHeight: 54, color: '#744139', paddingHorizontal: 10, paddingVertical: 7,
-    backgroundColor: '#FFF4F2', borderRadius: 9, fontSize: 12, lineHeight: 17 },
-  composer: { flexShrink: 0, flexDirection: 'row', alignItems: 'flex-end', gap: 6, padding: 6, backgroundColor: '#FFF',
-    borderRadius: 16, borderWidth: 1, borderColor: '#DFE8F3' },
-  micButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12,
+  notice: { maxHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 9, paddingRight: 4,
+    paddingVertical: 4, backgroundColor: '#FFF4F2', borderRadius: 9 },
+  noticeText: { flex: 1, color: '#744139', fontSize: 11, lineHeight: 15 },
+  noticeRetry: { minWidth: 54, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 8,
+    backgroundColor: '#FCE5E0' },
+  noticeRetryText: { color: '#8B2C20', fontSize: 11, fontWeight: '900' },
+  composer: { flexShrink: 0, flexDirection: 'row', alignItems: 'flex-end', gap: 5, padding: 5, backgroundColor: '#FFF',
+    borderRadius: 15, borderWidth: 1, borderColor: '#D7E4F3' },
+  micButton: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center', borderRadius: 12,
     backgroundColor: '#F1F5FA' },
-  micIcon: { color: '#829AB1', fontSize: 24, lineHeight: 26, fontWeight: '700' },
-  input: { flex: 1, minHeight: 42, maxHeight: 104, paddingHorizontal: 8, paddingVertical: 9,
+  micIcon: { color: '#627D98', fontSize: 19, lineHeight: 23 },
+  input: { flex: 1, minHeight: 46, maxHeight: 92, paddingHorizontal: 7, paddingVertical: 10,
     color: '#102A43', fontSize: 15, lineHeight: 20, textAlignVertical: 'top' },
-  sendButton: { minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 15,
-    backgroundColor: '#0B57D0', borderRadius: 12 },
+  sendButton: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#0B57D0', borderRadius: 14 },
   buttonDisabled: { opacity: 0.45 },
-  buttonText: { color: '#FFF', fontWeight: '800' },
+  sendIcon: { marginTop: -2, color: '#FFF', fontSize: 25, lineHeight: 27, fontWeight: '800' },
 });
