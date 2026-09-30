@@ -35,7 +35,7 @@ test('missing Auth0 public config fails closed and native Chat defaults to produ
 
 test('explicit test HTTPS origin is allowed; malformed and insecure overrides fail before token access', async () => {
   const nativeScreen = readFileSync(join(__dirname, '..', 'src', 'components', 'mobile-chat.native.tsx'), 'utf8');
-  assert.match(nativeScreen, /resolveMobileChatApiBase\(process\.env\.EXPO_PUBLIC_ENKH_CHAT_API_URL\)/);
+  assert.match(nativeScreen, /resolveMobileChatApiBase\(process\.env\.EXPO_PUBLIC_ENKH_API_URL\)/);
   assert.match(nativeScreen, /import \{ fetch as expoFetch \} from 'expo\/fetch'/);
   assert.match(nativeScreen, /createMobileChatApi\(mobileAccessToken, expoFetch/);
   const testOrigin = 'https://api-test.enkhsystems.com';

@@ -16,7 +16,7 @@ async function safeJson(response: Response) {
 }
 
 export async function mobileGuestToken(transport: typeof fetch = fetch,
-  apiBase = resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_CHAT_API_URL),
+  apiBase = resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_API_URL),
   clientType: 'ios' | 'android' = 'ios') {
   await secureStoreReady();
   const stored = await SecureStore.getItemAsync(GUEST_TOKEN_KEY);
@@ -37,7 +37,7 @@ export async function mobileGuestToken(transport: typeof fetch = fetch,
 }
 
 export async function claimMobileGuestChat(accessToken: () => Promise<string>, transport: typeof fetch = fetch,
-  apiBase = resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_CHAT_API_URL),
+  apiBase = resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_API_URL),
   clientType: 'ios' | 'android' = 'ios') {
   await secureStoreReady();
   const guestToken = await SecureStore.getItemAsync(GUEST_TOKEN_KEY);
