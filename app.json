@@ -6,6 +6,12 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "enkhapp",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/0a058132-e8ad-43f8-9be0-cf27937541f8"
+    },
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/enkh-ios-icon.png",
