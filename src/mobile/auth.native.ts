@@ -6,6 +6,7 @@ import { mobileAuthConfig } from './auth-config';
 import { atMobileAuthStage, mobileAuthPromptFailureCode } from './auth-diagnostic';
 import { AuthGenerationGuard, MOBILE_LOGOUT_REDIRECT, mobileLogoutUrl,
   runLocalFirstSignOut, saveIfCurrent } from './auth-logout';
+import { decodeMobileJwtClaims, normalizeMobileDisplayName } from './jwt-claims';
 
 const TOKEN_KEY = 'enkh.mobile.auth.v1';
 const PREFERRED_NAME_KEY = 'enkh.mobile.preferred-name.v1';
@@ -25,12 +26,6 @@ function config() {
 function redirectUri() {
   return AuthSession.makeRedirectUri({ scheme: 'enkhapp', path: 'auth' });
 }
-function claims(token: string): Record<string, unknown> {
-  const parts = token.split('.');
-  if (parts.length !== 3) throw new Error('MOBILE_TOKEN_INVALID');
-  try { return JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))) as Record<string, unknown>; }
-  catch { throw new Error('MOBILE_TOKEN_INVALID'); }
-}
 function claimText(payload: Record<string, unknown>, key: string) {
   const value = payload[key];
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -38,14 +33,14 @@ function claimText(payload: Record<string, unknown>, key: string) {
 function tokenDisplayName(idToken?: string) {
   if (!idToken) return null;
   try {
-    const payload = claims(idToken);
-    return claimText(payload, 'name') || claimText(payload, 'preferred_username') ||
-      claimText(payload, 'nickname') || claimText(payload, 'given_name');
+    const payload = decodeMobileJwtClaims(idToken);
+    return normalizeMobileDisplayName(claimText(payload, 'name') || claimText(payload, 'preferred_username') ||
+      claimText(payload, 'nickname') || claimText(payload, 'given_name') || undefined);
   } catch { return null; }
 }
 function checkToken(token: string, requireFresh = true) {
   const expected = config();
-  const payload = claims(token);
+  const payload = decodeMobileJwtClaims(token);
   const audience = payload.aud;
   if (payload.iss !== `${expected.issuer}/` ||
     !(audience === expected.audience || (Array.isArray(audience) && audience.includes(expected.audience))) ||
@@ -120,7 +115,7 @@ export async function mobileAccessToken(): Promise<string> {
     checkToken(fresh.accessToken);
     await saveTokens({ accessToken: fresh.accessToken, refreshToken: fresh.refreshToken || stored.refreshToken,
       expiresAt: (fresh.issuedAt + (fresh.expiresIn || 0)) * 1000,
-      displayName: tokenDisplayName(fresh.idToken) || stored.displayName }, generation);
+      displayName: tokenDisplayName(fresh.idToken) || normalizeMobileDisplayName(stored.displayName) || undefined }, generation);
     return fresh.accessToken;
   })().finally(() => { pendingRefresh = null; });
   return pendingRefresh;
@@ -140,8 +135,9 @@ export async function mobileProfile(): Promise<MobileProfile> {
     const stored = await readTokens();
     if (!stored) return { signedIn: false, displayName: null, preferredName, greetingName: preferredName };
     checkToken(stored.accessToken, false);
-    return { signedIn: true, displayName: stored.displayName || null, preferredName,
-      greetingName: preferredName || stored.displayName || null };
+    const displayName = normalizeMobileDisplayName(stored.displayName);
+    return { signedIn: true, displayName, preferredName,
+      greetingName: preferredName || displayName };
   } catch {
     return { signedIn: false, displayName: null, preferredName, greetingName: preferredName };
   }

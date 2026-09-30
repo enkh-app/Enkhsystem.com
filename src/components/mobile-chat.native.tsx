@@ -41,7 +41,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
     setWorking(true);
     void (async () => {
       try {
-        const apiBase = resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_CHAT_API_URL);
+        const apiBase = resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_API_URL);
         const clientType = Platform.OS === 'android' ? 'android' : 'ios';
         const signedInKey = await mobileAccountKey();
         if (signedInKey) {
