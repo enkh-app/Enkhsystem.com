@@ -6,6 +6,7 @@ import { AppHeader } from '../components/app-header';
 import { mobileAccessToken, mobileAccountKey, mobileProfile, mobileSetPreferredName, mobileSignIn, mobileSignOut } from '../mobile/auth.native';
 import { formatMobileAuthDiagnostic } from '../mobile/auth-diagnostic';
 import { createMobileAdminApi, mobileAdminAccessAllowed } from '../mobile/admin-api';
+import { mobileDisplayInitial, normalizeMobileDisplayName } from '../mobile/jwt-claims';
 import { useI18n } from '../i18n';
 
 const adminApi = createMobileAdminApi(mobileAccessToken);
@@ -26,8 +27,8 @@ export default function NativeAccountScreen() {
     void Promise.all([mobileAccountKey(), mobileProfile()]).then(([accountKey, profile]) => {
       if (!active) return;
       setSignedIn(!!accountKey);
-      setAccountName(profile.displayName);
-      setPreferredName(profile.preferredName || '');
+      setAccountName(normalizeMobileDisplayName(profile.displayName || undefined));
+      setPreferredName(normalizeMobileDisplayName(profile.preferredName || undefined) || '');
       if (!accountKey) { setShowAdmin(false); return; }
       void mobileAdminAccessAllowed(adminApi).then((allowed) => {
         if (active) setShowAdmin(allowed);
@@ -37,8 +38,8 @@ export default function NativeAccountScreen() {
   }, []));
 
   const saveName = async () => {
-    const value = await mobileSetPreferredName(preferredName);
-    setPreferredName(value || '');
+    const value = await mobileSetPreferredName(normalizeMobileDisplayName(preferredName) || '');
+    setPreferredName(normalizeMobileDisplayName(value || undefined) || '');
     setSaved(true);
   };
   const signIn = async () => {
@@ -47,8 +48,8 @@ export default function NativeAccountScreen() {
       const accountKey = await mobileSignIn();
       const profile = await mobileProfile();
       setSignedIn(!!accountKey);
-      setAccountName(profile.displayName);
-      setPreferredName(profile.preferredName || '');
+      setAccountName(normalizeMobileDisplayName(profile.displayName || undefined));
+      setPreferredName(normalizeMobileDisplayName(profile.preferredName || undefined) || '');
       setShowAdmin(await mobileAdminAccessAllowed(adminApi));
     } catch (error) {
       setNotice(`Нэвтрэх үйлдэл амжилтгүй боллоо. ${formatMobileAuthDiagnostic(error, 'chat_pull')}`);
@@ -69,7 +70,7 @@ export default function NativeAccountScreen() {
       <Text accessibilityRole="header" style={styles.title}>{t('account.title')}</Text>
       <Text style={styles.subtitle}>Таны mobile ENKH тохиргоо.</Text>
       <View style={styles.card}>
-        <View style={styles.avatar}><Text style={styles.avatarText}>{(preferredName || accountName || 'Э').slice(0, 1).toUpperCase()}</Text></View>
+        <View style={styles.avatar}><Text style={styles.avatarText}>{mobileDisplayInitial(preferredName || accountName || undefined)}</Text></View>
         <Text style={styles.cardTitle}>{signedIn ? 'Mobile Chat-д нэвтэрсэн' : 'Mobile Chat-д нэвтрээгүй'}</Text>
         {accountName ? <Text style={styles.accountName}>Бүртгэлийн нэр: {accountName}</Text> : null}
         <Text style={styles.label}>Энх таныг юу гэж дуудах вэ?</Text>
@@ -80,7 +81,7 @@ export default function NativeAccountScreen() {
           <Text style={styles.saveButtonText}>Нэр хадгалах</Text>
         </Pressable>
         {saved ? <Text accessibilityLiveRegion="polite" style={styles.saved}>Хадгаллаа. Нүүр хуудас дээр шинэ нэр харагдана.</Text> : null}
-        <Text style={styles.body}>Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана. Нэвтрэх болон гарах үйлдлийг эндээс удирдана.</Text>
+        <Text style={styles.body}>Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана. Нэвтрэх болон гарах үйлдлийг энэ хэсгээс удирдана.</Text>
         <Pressable accessibilityRole="link" onPress={() => router.navigate('/chat')} style={styles.chatButton}>
           <Text style={styles.chatButtonText}>{t('nav.chat')}  →</Text>
         </Pressable>
