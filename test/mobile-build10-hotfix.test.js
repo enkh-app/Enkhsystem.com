@@ -18,14 +18,33 @@ function loadTypeScript(file) {
 }
 
 test('mobile JWT claims decode Base64URL bytes as UTF-8 Cyrillic and repair stored mojibake', () => {
-  const { decodeMobileJwtClaims, normalizeMobileDisplayName } = loadTypeScript('src/mobile/jwt-claims.ts');
+  const { decodeMobileJwtClaims, normalizeMobileDisplayName, mobileDisplayInitial } =
+    loadTypeScript('src/mobile/jwt-claims.ts');
   const payload = Buffer.from(JSON.stringify({ name: 'Насаа Баттулга' }), 'utf8').toString('base64url');
   const claims = decodeMobileJwtClaims(`header.${payload}.signature`);
   assert.equal(claims.name, 'Насаа Баттулга');
   const mojibake = Buffer.from('Насаа Баттулга', 'utf8').toString('latin1');
   assert.equal(normalizeMobileDisplayName(mojibake), 'Насаа Баттулга');
   assert.equal(normalizeMobileDisplayName('Nasa'), 'Nasa');
+  const screenshotMojibake = '\u00d0\u009d\u00d0\u00b0\u00d1\u0081\u00d0\u00b0\u00d0\u00b0';
+  assert.equal(screenshotMojibake, 'Ð\u009dÐ°Ñ\u0081Ð°Ð°');
+  assert.equal(normalizeMobileDisplayName(screenshotMojibake), 'Насаа');
+  assert.equal(mobileDisplayInitial(screenshotMojibake), 'Н');
+  assert.equal(mobileDisplayInitial('😊 Насаа'), '😊');
   assert.throws(() => decodeMobileJwtClaims('header.%%%25.signature'), /MOBILE_TOKEN_INVALID/);
+});
+
+test('native Account normalizes profile, editable, avatar and saved display names', () => {
+  const account = read('src/app/account.native.tsx');
+  const auth = read('src/mobile/auth.native.ts');
+  assert.match(account, /setAccountName\(normalizeMobileDisplayName\(profile\.displayName/);
+  assert.match(account, /setPreferredName\(normalizeMobileDisplayName\(profile\.preferredName/);
+  assert.match(account, /mobileSetPreferredName\(normalizeMobileDisplayName\(preferredName\)/);
+  assert.match(account, /mobileDisplayInitial\(preferredName \|\| accountName \|\| undefined\)/);
+  assert.match(auth, /normalizeMobileDisplayName\(value\)\?\.slice\(0, 40\)/);
+  assert.match(account, /Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана\. Нэвтрэх болон гарах үйлдлийг энэ хэсгээс удирдана\./);
+  assert.match(account, /mobileSignOut/);
+  assert.doesNotMatch(read('src/components/mobile-chat.native.tsx'), /mobileSignOut|Гарах/);
 });
 
 test('native Chat consumes only the canonical public API URL', () => {

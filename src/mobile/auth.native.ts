@@ -145,7 +145,7 @@ export async function mobileProfile(): Promise<MobileProfile> {
 
 export async function mobileSetPreferredName(value: string) {
   await secureStoreReady();
-  const normalized = value.trim().replace(/\s+/g, ' ').slice(0, 40);
+  const normalized = normalizeMobileDisplayName(value)?.slice(0, 40) || '';
   if (normalized) await SecureStore.setItemAsync(PREFERRED_NAME_KEY, normalized);
   else await SecureStore.deleteItemAsync(PREFERRED_NAME_KEY);
   return normalized || null;

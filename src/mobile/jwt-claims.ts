@@ -37,3 +37,8 @@ export function normalizeMobileDisplayName(value?: string): string | null {
     return decoded || name;
   } catch { return name; }
 }
+
+export function mobileDisplayInitial(value?: string, fallback = 'Э'): string {
+  const normalized = normalizeMobileDisplayName(value) || normalizeMobileDisplayName(fallback) || 'Э';
+  return (Array.from(normalized)[0] || 'Э').toLocaleUpperCase();
+}
