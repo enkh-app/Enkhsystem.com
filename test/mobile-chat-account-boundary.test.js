@@ -13,6 +13,9 @@ test('native Home always shows Chat and delegates authentication to Account', ()
   assert.match(source, /<ScrollView style=\{styles\.messages\}/);
   assert.match(source, /<View style=\{styles\.composer\}>/);
   assert.match(source, /new MobileChatEngine\(nativeChatPersistence/);
-  assert.match(source, /await engine\.current\?\.send/);
+  assert.match(source, /await instance\.send/);
+  assert.match(source, /useFocusEffect\(useCallback/);
+  assert.match(source, /next !== accountRef\.current/);
+  assert.match(source, /setAccountVersion\(\(value\) => value \+ 1\)/);
   assert.match(source, /from '\.\/app-header\.native'/);
 });

@@ -106,6 +106,7 @@ test('guest Chat uses a bounded opaque token only for the configured ENKH origin
 
 test('native guest session reuses SecureStore and deletes its token only after successful claim', () => {
   const source = readFileSync(join(__dirname, '..', 'src', 'mobile', 'guest-chat.native.ts'), 'utf8');
+  const storage = readFileSync(join(__dirname, '..', 'src', 'mobile', 'chat-storage.native.ts'), 'utf8');
   const screen = readFileSync(join(__dirname, '..', 'src', 'components', 'mobile-chat.native.tsx'), 'utf8');
   assert.match(source, /SecureStore\.getItemAsync\(GUEST_TOKEN_KEY\)/);
   assert.match(source, /SecureStore\.setItemAsync\(GUEST_TOKEN_KEY, data\.guestToken\)/);
@@ -114,6 +115,9 @@ test('native guest session reuses SecureStore and deletes its token only after s
   assert.doesNotMatch(source, /AsyncStorage|localStorage|console\.(log|error)/);
   assert.match(screen, /claimMobileGuestChat/);
   assert.match(screen, /mobileGuestAccountKey/);
+  assert.match(storage, /if \(key === 'guest-installation'\) return;/);
+  assert.match(storage, /\^\[a-f0-9\]\{64\}\$/);
+  assert.doesNotMatch(storage, /if \(key\.startsWith\('guest/);
 });
 
 test('all six authenticated Chat paths preserve cursors and never call public actions', async () => {
@@ -183,6 +187,34 @@ test('account switching hides active data but preserves each stored account', as
   await engine.switchAccount(null); assert.equal(engine.view().messages.length, 0);
 });
 
+test('guest, sign-in, sign-out and different-account transitions never mix chat state', async () => {
+  const h = harness();
+  const engine = h.create();
+  const ownerA = 'a'.repeat(64);
+  const ownerB = 'b'.repeat(64);
+
+  await engine.switchAccount('guest-installation');
+  await engine.send(id(1), 'guest-only');
+  assert.deepEqual(engine.view().messages.map((item) => item.content), ['guest-only']);
+
+  await engine.switchAccount(ownerA);
+  assert.equal(engine.view().messages.length, 0);
+  await engine.send(id(2), 'owner-a-only');
+
+  await engine.switchAccount('guest-installation');
+  assert.deepEqual(engine.view().messages.map((item) => item.content), ['guest-only']);
+
+  await engine.switchAccount(ownerB);
+  assert.equal(engine.view().messages.length, 0);
+  await engine.send(id(3), 'owner-b-only');
+
+  await engine.switchAccount(ownerA);
+  assert.deepEqual(engine.view().messages.map((item) => item.content), ['owner-a-only']);
+  await engine.switchAccount(ownerB);
+  assert.deepEqual(engine.view().messages.map((item) => item.content), ['owner-b-only']);
+  assert.equal(h.files.size, 3);
+});
+
 test('deleting a local-only conversation never sends its unsent turn to AI', async () => {
   const h = harness(); const engine = h.create(); await engine.switchAccount('owner-a');
   await engine.send(id(1), 'unsent fixture');
@@ -230,4 +262,59 @@ test('auth source never puts token in local SQLite model or ordinary storage', (
   assert.match(localIdentity, /readTokens\(\)/);
   assert.match(localIdentity, /checkToken\(stored\.accessToken, false\)/);
   assert.doesNotMatch(localIdentity, /mobileAccessToken\(\)/);
+});
+
+test('stalled authorization, transport and response body all time out without replay', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const stage of ['authorization', 'transport', 'body']) {
+    let calls = 0;
+    let signal;
+    const never = () => new Promise(() => {});
+    const api = createMobileChatApi(stage === 'authorization' ? never : async () => 'token',
+      async (_url, options) => {
+        calls++; signal = options.signal;
+        if (stage === 'transport') return never();
+        return { ok: true, json: never };
+      });
+    const pending = api.sync({ conversations: [], messages: [] });
+    const rejection = assert.rejects(pending, (error) => error.code === 'REQUEST_TIMEOUT');
+    for (let i = 0; i < 8; i++) await Promise.resolve();
+    t.mock.timers.tick(45000);
+    await rejection;
+    assert.equal(calls, stage === 'authorization' ? 0 : 1);
+    if (signal) assert.equal(signal.aborted, true);
+  }
+});
+
+test('durable-save callback never clears draft on storage failure', async () => {
+  let cleared = false;
+  let calls = 0;
+  const engine = new MobileChatEngine({ load: async () => null,
+    save: async () => { throw new Error('disk full'); } },
+    { turn: async () => { calls++; } }, () => id(20));
+  await engine.switchAccount('owner');
+  await assert.rejects(engine.send(id(1), 'keep draft', () => { cleared = true; }), /disk full/);
+  assert.equal(cleared, false);
+  assert.equal(calls, 0);
+});
+
+test('auth failure surfaces while preserving queued message and original retry IDs', async () => {
+  const saves = [];
+  let calls = 0;
+  let sequence = 10;
+  const engine = new MobileChatEngine({ load: async () => null,
+    save: async (_key, value) => saves.push(JSON.parse(JSON.stringify(value))) },
+    { turn: async () => { calls++; throw new ChatApiError(401, 'MOBILE_SIGN_IN_REQUIRED'); } },
+    () => id(sequence++));
+  await engine.switchAccount('owner');
+  let cleared = false;
+  await assert.rejects(engine.send(id(1), 'saved draft', () => { cleared = true; }),
+    (error) => error.status === 401);
+  assert.equal(cleared, true);
+  assert.equal(engine.view().pendingTurns.length, 1);
+  assert.equal(engine.view().messages[0].status, 'failed');
+  const original = engine.view().pendingTurns[0];
+  await assert.rejects(engine.retryPending(), (error) => error.status === 401);
+  assert.deepEqual(engine.view().pendingTurns[0], original);
+  assert.equal(calls, 2);
 });

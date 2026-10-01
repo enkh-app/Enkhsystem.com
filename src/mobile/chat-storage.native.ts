@@ -16,6 +16,7 @@ async function db() {
   return database;
 }
 function validKey(key: string) {
+  if (key === 'guest-installation') return;
   if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('INVALID_LOCAL_ACCOUNT');
 }
 export const nativeChatPersistence: ChatPersistence = {
