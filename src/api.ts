@@ -1,3 +1,29 @@
+
+export class NetworkRequestError extends Error {
+  constructor(public code: 'NETWORK_UNAVAILABLE' | 'REQUEST_TIMEOUT') { super(code); }
+}
+
+// Bound the response body as well as the connection; never replay mutations here.
+async function boundedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => { reject(new NetworkRequestError('REQUEST_TIMEOUT')); controller.abort(); }, 45000);
+  });
+  try {
+    const response = await Promise.race([fetch(url, { ...options, signal: controller.signal }), timeout]);
+    const data = await Promise.race([response.text ? response.text().then((text) => { try { return JSON.parse(text); } catch { return null; } }) : response.json(), timeout]);
+    clearTimeout(timer!);
+    return {
+      ok: response.ok, status: response.status,
+      json: async () => data,
+    } as Response;
+  } catch (error) {
+    clearTimeout(timer!);
+    if (error instanceof NetworkRequestError) throw error;
+    throw new NetworkRequestError('NETWORK_UNAVAILABLE');
+  }
+}
 const LOCAL_ENKH_API_URL = 'http://localhost:3000';
 const PRODUCTION_ENKH_API_URL = 'https://api.enkhsystems.com';
 
@@ -85,7 +111,7 @@ export type AdminUserSummary = { displayName: string; email: string; status: 'ac
 export type ReminderStatus = 'scheduled' | 'processing' | 'delivered' | 'failed' | 'cancelled';
 export type Reminder = { id: string; title: string; note: string; scheduledAt: string; timezone: string; status: ReminderStatus; deliveryChannel: 'in_app'; createdAt: string; updatedAt: string; deliveredAt: string | null; retryCount: number; version: number };
 async function reminderRequest(path = '', options: RequestInit = {}): Promise<any> {
-  const response = await fetch(`${ENKH_API_URL}/api/reminders${path}`, { ...options, credentials: 'include', headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers } });
+  const response = await boundedFetch(`${ENKH_API_URL}/api/reminders${path}`, { ...options, credentials: 'include', headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers } });
   if (!response.ok) throw new AdminApiError(response.status);
   return response.json();
 }
@@ -95,7 +121,7 @@ export async function updateReminder(id: string, input: { title: string; note: s
 export async function cancelReminder(id: string): Promise<Reminder> { return (await reminderRequest(`/${encodeURIComponent(id)}`, { method: 'DELETE' })).reminder; }
 
 export async function getAuthState(): Promise<AuthState> {
-  const response = await fetch(`${ENKH_API_URL}/auth/me`, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
+  const response = await boundedFetch(`${ENKH_API_URL}/auth/me`, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
   if (response.status === 401) return { authenticated: false, admin: false };
   if (!response.ok) throw new Error(`Auth API error: ${response.status}`);
   const payload = await response.json();
@@ -106,7 +132,7 @@ export const authLoginUrl = `${ENKH_API_URL}/auth/login?returnTo=${encodeURIComp
 export const authLogoutUrl = `${ENKH_API_URL}/auth/logout?returnTo=${encodeURIComponent('https://enkhsystems.com')}`;
 
 export async function getCloudWorkspace(): Promise<{ revision: number; workspace: unknown | null }> {
-  const response = await fetch(`${ENKH_API_URL}/api/workspace`, { credentials: 'include', headers: { Accept: 'application/json' } });
+  const response = await boundedFetch(`${ENKH_API_URL}/api/workspace`, { credentials: 'include', headers: { Accept: 'application/json' } });
   if (!response.ok) throw new AdminApiError(response.status);
   const payload = await response.json();
   return { revision: Number(payload.revision || 0), workspace: payload.workspace ?? null };
@@ -121,21 +147,21 @@ export async function syncCloudWorkspace(workspace: unknown, expectedRevision: n
 }
 
 async function writeCloudWorkspace(path: string, method: 'POST' | 'PUT', body: unknown): Promise<{ revision: number; workspace: unknown }> {
-  const response = await fetch(`${ENKH_API_URL}${path}`, { method, credentials: 'include', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const response = await boundedFetch(`${ENKH_API_URL}${path}`, { method, credentials: 'include', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!response.ok) throw new AdminApiError(response.status);
   const payload = await response.json();
   return { revision: Number(payload.revision), workspace: payload.workspace };
 }
 
 export async function getSystemHealth(): Promise<{ healthy: boolean }> {
-  const response = await fetch(`${ENKH_API_URL}/health`, { method: 'GET', headers: { Accept: 'application/json' } });
+  const response = await boundedFetch(`${ENKH_API_URL}/health`, { method: 'GET', headers: { Accept: 'application/json' } });
   if (!response.ok) throw new Error(`Health API error: ${response.status}`);
   const payload = await response.json();
   return { healthy: payload?.status === 'healthy' || payload?.success === true };
 }
 
 export async function getAdminDashboard(): Promise<AdminDashboardData> {
-  const response = await fetch(`${ENKH_API_URL}/api/admin/data`, {
+  const response = await boundedFetch(`${ENKH_API_URL}/api/admin/data`, {
     method: 'GET',
     credentials: 'include',
     headers: { Accept: 'application/json' },
@@ -147,7 +173,7 @@ export async function getAdminDashboard(): Promise<AdminDashboardData> {
 }
 
 export async function getAdminOverview(): Promise<AdminOverview> {
-  const response = await fetch(`${ENKH_API_URL}/api/admin/overview`, {
+  const response = await boundedFetch(`${ENKH_API_URL}/api/admin/overview`, {
     method: 'GET', credentials: 'include', headers: { Accept: 'application/json' }
   });
   if (!response.ok) throw new AdminApiError(response.status);
@@ -157,7 +183,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
 }
 
 export async function getAdminUsers(): Promise<AdminUserSummary[]> {
-  const response = await fetch(`${ENKH_API_URL}/api/admin/users`, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
+  const response = await boundedFetch(`${ENKH_API_URL}/api/admin/users`, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
   if (!response.ok) throw new AdminApiError(response.status);
   const payload = await response.json();
   if (!payload?.success || !Array.isArray(payload.users)) throw new AdminApiError(502);
@@ -167,7 +193,7 @@ export async function getAdminUsers(): Promise<AdminUserSummary[]> {
 export const adminLoginUrl = `${ENKH_API_URL}/auth/login?returnTo=${encodeURIComponent('/auth/complete')}`;
 
 async function pageAdminRequest(path: string, options: RequestInit): Promise<{ postId: string }> {
-  const response = await fetch(`${ENKH_API_URL}/api/admin/page${path}`, {
+  const response = await boundedFetch(`${ENKH_API_URL}/api/admin/page${path}`, {
     ...options,
     credentials: 'include',
     headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...options.headers },
@@ -210,7 +236,7 @@ export async function runAction(
   actionId: string,
   input: unknown
 ): Promise<ActionResponse> {
-  const response = await fetch(`${ENKH_API_URL}/actions/run`, {
+  const response = await boundedFetch(`${ENKH_API_URL}/actions/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ actionId, input }),

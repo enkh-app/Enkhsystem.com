@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ActionApiError, sendMessage } from '../api';
+import { ActionApiError, NetworkRequestError, sendMessage } from '../api';
 import { AppHeader } from '../components/app-header';
 import { SeoHead } from '../components/seo-head';
 import { addEntry, contextFor, createSession, emptyWorkspace, entriesFor, loadWorkspace, saveWorkspace, WorkspaceEntry, WorkspaceState } from '../workspace-store';
@@ -26,7 +26,7 @@ function WebChatScreen() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [failedText, setFailedText] = useState('');
-  const [failureKind, setFailureKind] = useState<'validation' | 'network'>('network');
+  const [failureKind, setFailureKind] = useState<'validation' | 'network' | 'auth' | 'timeout'>('network');
   const [storageWarning, setStorageWarning] = useState('');
   const scrollRef = useRef<ScrollView>(null);
   const initialSent = useRef(false);
@@ -75,7 +75,9 @@ function WebChatScreen() {
       setMessages(entriesFor(next, activeId));
       backgroundWorkspaceSync.schedule(next);
     } catch (error) {
-      setFailureKind(error instanceof ActionApiError && error.status >= 400 && error.status < 500 ? 'validation' : 'network');
+      setFailureKind(error instanceof ActionApiError && [401, 403].includes(error.status) ? 'auth' :
+        error instanceof NetworkRequestError && error.code === 'REQUEST_TIMEOUT' ? 'timeout' :
+        error instanceof ActionApiError && error.status >= 400 && error.status < 500 ? 'validation' : 'network');
       setFailedText(text);
     } finally {
       setLoading(false);
@@ -102,7 +104,7 @@ function WebChatScreen() {
           {!messages.length && <View style={[styles.row, styles.enkhRow]}><View style={[styles.bubble, styles.enkhBubble]}><Text style={styles.message}>{t('chat.empty')}</Text></View></View>}
           {messages.map((message) => <View key={message.id} style={[styles.row, message.role === 'user' ? styles.userRow : styles.enkhRow]}><View style={[styles.bubble, message.role === 'user' ? styles.userBubble : styles.enkhBubble]}><Text style={[styles.message, message.role === 'user' && styles.userMessage]}>{message.content}</Text></View></View>)}
           {loading && <View accessibilityLiveRegion="polite" style={styles.thinking}><ActivityIndicator color="#171717" /><Text style={styles.thinkingText}>{t('chat.sending')}</Text></View>}
-          {!!failedText && <View accessibilityLiveRegion="assertive" style={styles.failure}><Text style={styles.failureText}>{failureKind === 'validation' ? 'Хүсэлтийн мэдээллийг шалгаад дахин оролдоно уу.' : 'Сүлжээ эсвэл үйлчилгээний түр алдаа гарлаа.'} Таны асуулт history-д хадгалагдсан.</Text><Pressable accessibilityRole="button" accessibilityLabel="Сүүлийн асуултыг дахин оролдох" onPress={() => void send(failedText, true)} style={styles.retry}><Text style={styles.retryText}>Дахин оролдох</Text></Pressable></View>}
+          {!!failedText && <View accessibilityLiveRegion="assertive" style={styles.failure}><Text style={styles.failureText}>{failureKind === 'auth' ? 'Нэвтрэлтийг Би хэсгээс шалгана уу.' : failureKind === 'timeout' ? 'Хүсэлтийн хугацаа дууслаа.' : failureKind === 'validation' ? 'Хүсэлтийн мэдээллийг шалгаад дахин оролдоно уу.' : 'Сүлжээ эсвэл үйлчилгээний түр алдаа гарлаа.'} Таны асуулт history-д хадгалагдсан.</Text><Pressable accessibilityRole="button" accessibilityLabel="Сүүлийн асуултыг дахин оролдох" onPress={() => void send(failedText, true)} style={styles.retry}><Text style={styles.retryText}>Дахин оролдох</Text></Pressable></View>}
         </ScrollView>
         <View style={styles.composer}><TextInput accessibilityLabel={t('chat.placeholder')} editable={!loading} multiline value={input} onChangeText={setInput} onKeyPress={(event) => { if (Platform.OS === 'web' && event.nativeEvent.key === 'Enter' && !(event.nativeEvent as typeof event.nativeEvent & { shiftKey?: boolean }).shiftKey) { event.preventDefault(); void send(); } }} onSubmitEditing={() => void send()} placeholder={t('chat.placeholder')} placeholderTextColor="#888" style={styles.input} submitBehavior="submit"/><Pressable accessibilityRole="button" accessibilityLabel={t('chat.send')} disabled={!input.trim() || loading} onPress={() => void send()} style={({ pressed }) => [styles.send, (!input.trim() || loading) && styles.disabled, pressed && styles.pressed]}><Text style={styles.sendText}>{t('chat.send')} ↑</Text></Pressable></View>
       </KeyboardAvoidingView>
