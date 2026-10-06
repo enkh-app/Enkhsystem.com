@@ -1,4 +1,5 @@
 export type ChatTurnInput = { clientConversationId: string; clientTurnId: string; clientMessageId: string; message: string };
+export type ChatImageTurnInput = ChatTurnInput & { imageUri: string };
 export type ChatTurnResponse = { success: true; conversationId: string; userMessageId: string;
   assistantMessageId: string; assistantClientMessageId: string; answer: string; duplicate: boolean; cursor: number };
 export type ChatChange = { kind: 'conversation' | 'message'; id: string; changeSeq: number; deletedAt: string | null;
@@ -77,8 +78,40 @@ function createAuthorizedChatApi(authorization: () => Promise<string>, transport
     }
     return data;
   }
+  async function imageTurn(input: ChatImageTurnInput, image: Blob): Promise<ChatTurnResponse> {
+    validId(input.clientConversationId); validId(input.clientTurnId); validId(input.clientMessageId);
+    if (!input.message.trim() || input.message.length > 2000 || image.size <= 0 || image.size > 10_000_000)
+      throw new ChatApiError(400, 'INVALID_CHAT_IMAGE');
+    const form = new FormData();
+    form.append('clientConversationId', input.clientConversationId);
+    form.append('clientTurnId', input.clientTurnId);
+    form.append('clientMessageId', input.clientMessageId);
+    form.append('message', input.message);
+    form.append('image', image, 'attachment.jpg');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90000);
+    try {
+      const auth = await authorization();
+      const response = await transport(`${apiBase}/api/chat/turns/image`, {
+        method: 'POST', redirect: 'error', signal: controller.signal,
+        headers: { Accept: 'application/json', Authorization: auth, 'X-Enkh-Client-Type': clientType },
+        body: form
+      });
+      const data = await response.json();
+      if (JSON.stringify(data).length > 1_000_000) throw new ChatApiError(502, 'MALFORMED_CHAT_RESPONSE');
+      if (!response.ok) {
+        const code = (data as { error?: { code?: unknown } })?.error?.code;
+        throw new ChatApiError(response.status, typeof code === 'string' ? code : 'CHAT_REQUEST_FAILED');
+      }
+      return validateTurn(data);
+    } catch (error) {
+      if (error instanceof ChatApiError) throw error;
+      throw new ChatApiError(0, controller.signal.aborted ? 'REQUEST_TIMEOUT' : 'NETWORK_UNAVAILABLE');
+    } finally { clearTimeout(timer); }
+  }
   return {
     turn: async (input: ChatTurnInput) => validateTurn(await request('/api/chat/turns', 'POST', input)),
+    imageTurn,
     conversations: async (limit = 50, before?: string) => {
       const data = await request(`/api/chat/conversations?limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ''}`) as
         { conversations?: unknown[]; nextCursor?: unknown };

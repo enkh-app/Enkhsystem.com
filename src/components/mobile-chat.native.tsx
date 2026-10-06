@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
@@ -9,8 +9,10 @@ import { useI18n } from '../i18n';
 import { mobileAccountKey, mobileAccessToken, mobileProfile } from '../mobile/auth.native';
 import { createGuestMobileChatApi, createMobileChatApi, resolveMobileChatApiBase, ChatApiError } from '../mobile/chat-api';
 import { claimMobileGuestChat, mobileGuestAccountKey, mobileGuestToken } from '../mobile/guest-chat.native';
-import { MobileChatEngine, LocalChatState } from '../mobile/chat-engine';
+import { MobileChatEngine, LocalChatState, ChatTransport } from '../mobile/chat-engine';
 import { nativeChatPersistence } from '../mobile/chat-storage.native';
+import { File } from 'expo-file-system';
+import { pickChatImage, removeChatImage } from '../mobile/chat-image.native';
 
 const empty: LocalChatState = { cursor: 0, conversations: [], messages: [], pendingTurns: [], pendingDeletes: [] };
 
@@ -22,13 +24,17 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
   const [state, setState] = useState<LocalChatState>(empty);
   const [conversation, setConversation] = useState('');
   const [input, setInput] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('');
   const [greetingName, setGreetingName] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [accountVersion, setAccountVersion] = useState(0);
+  const [atLatest, setAtLatest] = useState(true);
   const accountRef = useRef<string | null>(null);
   const engine = useRef<MobileChatEngine | null>(null);
+  const messageList = useRef<ScrollView>(null);
+  const keepLatest = useRef(true);
 
   useEffect(() => {
     let active = true;
@@ -54,8 +60,12 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
           ? createMobileChatApi(mobileAccessToken, expoFetch, apiBase, clientType)
           : createGuestMobileChatApi(() => mobileGuestToken(expoFetch, apiBase, clientType),
             expoFetch, apiBase, clientType);
-        const instance = new MobileChatEngine(nativeChatPersistence, client, Crypto.randomUUID,
-          (next) => { if (active) setState(next); });
+        const transport: ChatTransport = signedInKey ? { ...client,
+          imageTurn: async (turn: { imageUri: string; clientConversationId: string; clientTurnId: string;
+            clientMessageId: string; message: string }) => client.imageTurn(turn, new File(turn.imageUri)) }
+          : { turn: client.turn, changes: client.changes, conversations: client.conversations, sync: client.sync };
+        const instance = new MobileChatEngine(nativeChatPersistence, transport, Crypto.randomUUID,
+          (next) => { if (active) setState(next); }, removeChatImage);
         engine.current = instance;
         const key = signedInKey || mobileGuestAccountKey;
         if (!active) return;
@@ -79,12 +89,13 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
     void mobileAccountKey().then((key) => {
       const next = key || mobileGuestAccountKey;
       if (active && accountRef.current && next !== accountRef.current) {
-        setInput(''); setState(empty); setAccount(null);
+        if (selectedImage) void removeChatImage(selectedImage);
+        setSelectedImage(null); setInput(''); setState(empty); setAccount(null);
         setAccountVersion((value) => value + 1);
       }
     });
     return () => { active = false; };
-  }, []));
+  }, [selectedImage]));
 
   const failureNotice = (error: unknown) => {
     if (error instanceof ChatApiError && (error.status === 401 || error.status === 403) ||
@@ -95,9 +106,14 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
     return 'Сүлжээ эсвэл үйлчилгээ түр холбогдсонгүй. Дахин оролдоно уу.';
   };
 
-  const newChat = () => { setConversation(Crypto.randomUUID()); setHistoryOpen(false); setNotice(''); };
+  const selectConversation = (id: string) => {
+    keepLatest.current = true;
+    setAtLatest(true);
+    setConversation(id);
+  };
+  const newChat = () => { selectConversation(Crypto.randomUUID()); setHistoryOpen(false); setNotice(''); };
   const send = async () => {
-    const text = input.trim();
+    const text = input.trim() || (selectedImage ? 'Энэ зурагт юу байна вэ?' : '');
     if (!text || working) return;
     if (!account) {
       setNotice('Үргэлжлүүлэхийн тулд Би хэсгээс нэвтэрнэ үү.');
@@ -106,9 +122,14 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
     const instance = engine.current;
     if (!instance) { setNotice('Чат бэлэн болоогүй байна. Дахин оролдоно уу.'); return; }
     setWorking(true); setNotice('');
-    try { await instance.send(conversation || Crypto.randomUUID(), text, () => {
-      if (engine.current === instance) setInput('');
-    }); }
+    try {
+      if (selectedImage) await instance.sendImage(conversation || Crypto.randomUUID(), text, selectedImage, () => {
+        if (engine.current === instance) { setInput(''); setSelectedImage(null); }
+      });
+      else await instance.send(conversation || Crypto.randomUUID(), text, () => {
+        if (engine.current === instance) setInput('');
+      });
+    }
     catch (error) { if (engine.current === instance) setNotice(failureNotice(error)); }
     finally { if (engine.current === instance) setWorking(false); }
   };
@@ -137,15 +158,25 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
           <ScrollView style={styles.historyList} contentContainerStyle={styles.historyContent}>
             {conversations.length ? conversations.map((item, index) => <Pressable key={item.id}
               accessibilityRole="button" accessibilityState={{ selected: item.id === conversation }}
-              onPress={() => { setConversation(item.id); setHistoryOpen(false); }}
+              onPress={() => { selectConversation(item.id); setHistoryOpen(false); }}
               style={[styles.historyItem, item.id === conversation && styles.historyItemSelected]}>
               <Text numberOfLines={1} style={styles.historyItemText}>{conversationTitle(item.id, index)}</Text>
             </Pressable>) : <Text style={styles.help}>Өмнөх яриа алга.</Text>}
           </ScrollView>
         </View> : <>
-          <ScrollView style={styles.messages}
+          <View style={styles.messageArea}><ScrollView ref={messageList} style={styles.messages}
             contentContainerStyle={[styles.messageContent, visible.length === 0 && styles.emptyContent]}
-            keyboardShouldPersistTaps="handled">
+            keyboardShouldPersistTaps="handled"
+            scrollEventThrottle={100}
+            onScroll={(event) => {
+              const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+              const latest = contentOffset.y + layoutMeasurement.height >= contentSize.height - 80;
+              keepLatest.current = latest;
+              setAtLatest(latest);
+            }}
+            onContentSizeChange={() => {
+              if (keepLatest.current) messageList.current?.scrollToEnd({ animated: false });
+            }}>
             {visible.length === 0 ? <View style={styles.emptyState}>
               {homeMode ? <Text style={styles.hello}>{greetingName ? `Сайн байна уу, ${greetingName}.` : 'Сайн байна уу, Nasa.'}</Text> : null}
               <Text accessibilityRole="header" style={styles.emptyTitle}>Энхтэй ярилцах</Text>
@@ -166,6 +197,12 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
             </View>)}
             {working ? <ActivityIndicator /> : null}
           </ScrollView>
+          {!atLatest && visible.length > 0 ? <Pressable accessibilityRole="button"
+            accessibilityLabel="Хамгийн сүүлийн хариулт руу очих"
+            onPress={() => { keepLatest.current = true; setAtLatest(true); messageList.current?.scrollToEnd({ animated: true }); }}
+            style={styles.latestButton}>
+            <Text style={styles.latestButtonText}>Сүүлийн хариулт ↓</Text>
+          </Pressable> : null}</View>
           {pending ? <Pressable accessibilityRole="button" onPress={() => void retry()} style={styles.retry}>
             <Text style={styles.retryText}>Хүлээгдэж буй {pending} · Дахин оролдох</Text>
           </Pressable> : null}
@@ -176,15 +213,35 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
               <Text style={styles.noticeRetryText}>Дахин</Text>
             </Pressable>
           </View>}
+          {selectedImage ? <View style={styles.imageSelection}>
+            <Image source={{ uri: selectedImage }} style={styles.imagePreview} accessibilityLabel="Сонгосон зураг" />
+            <Text style={styles.imageSelectionText}>Зураг бэлэн</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Сонгосон зургийг хасах"
+              onPress={() => { void removeChatImage(selectedImage); setSelectedImage(null); }}>
+              <Text style={styles.removeImage}>Хасах ×</Text>
+            </Pressable>
+          </View> : null}
           <View style={styles.composer}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Зураг сонгох"
+              disabled={working} onPress={() => void (async () => {
+                if (!account || account === mobileGuestAccountKey) {
+                  setNotice('Зураг илгээхийн тулд Би хэсгээс нэвтэрнэ үү.'); return;
+                }
+                try {
+                  const uri = await pickChatImage();
+                  if (uri) { if (selectedImage) await removeChatImage(selectedImage); setSelectedImage(uri); setNotice(''); }
+                } catch { setNotice('Зургийг сонгож чадсангүй. 10 MB-аас бага зураг сонгоно уу.'); }
+              })()} style={styles.micButton}>
+              <Text accessibilityElementsHidden style={styles.micIcon}>＋</Text>
+            </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Дуу оруулах (удахгүй)" disabled
               style={styles.micButton}><Text accessibilityElementsHidden style={styles.micIcon}>🎤</Text></Pressable>
             <TextInput editable={!working} multiline value={input} onChangeText={setInput} accessibilityLabel={t('chat.placeholder')}
               placeholder={t('chat.placeholder')} placeholderTextColor="#627D98"
               returnKeyType="default" style={styles.input} />
-            <Pressable accessibilityRole="button" disabled={!input.trim() || working}
+            <Pressable accessibilityRole="button" disabled={(!input.trim() && !selectedImage) || working}
               accessibilityLabel={t('chat.send')} onPress={() => void send()}
-              style={[styles.sendButton, (!input.trim() || working) && styles.buttonDisabled]}>
+              style={[styles.sendButton, ((!input.trim() && !selectedImage) || working) && styles.buttonDisabled]}>
               <Text accessibilityElementsHidden style={styles.sendIcon}>↑</Text>
             </Pressable>
           </View>
@@ -197,6 +254,12 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#FFFFFF' },
   layout: { flex: 1, minHeight: 0, paddingHorizontal: 8, paddingTop: 5, paddingBottom: 4, gap: 5 },
   messages: { flex: 1, minHeight: 0, backgroundColor: '#FFFFFF' },
+  messageArea: { flex: 1, minHeight: 0 },
+  latestButton: { position: 'absolute', right: 12, bottom: 12, minHeight: 42,
+    justifyContent: 'center', paddingHorizontal: 14, borderRadius: 21,
+    backgroundColor: '#0B57D0', elevation: 3, shadowColor: '#102A43', shadowOpacity: 0.16,
+    shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  latestButtonText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
   messageContent: { paddingHorizontal: 8, paddingVertical: 9, gap: 10 },
   emptyContent: { flexGrow: 1, justifyContent: 'center' },
   emptyState: { alignItems: 'center', paddingHorizontal: 28, gap: 5 },
@@ -233,6 +296,11 @@ const styles = StyleSheet.create({
     borderRadius: 15, borderWidth: 1, borderColor: '#D7E4F3' },
   micButton: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center', borderRadius: 12,
     backgroundColor: '#F1F5FA' },
+  imageSelection: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10,
+    paddingVertical: 5, borderRadius: 12, backgroundColor: '#F1F5FA' },
+  imagePreview: { width: 42, height: 42, borderRadius: 7 },
+  imageSelectionText: { flex: 1, color: '#243B53', fontSize: 13, fontWeight: '700' },
+  removeImage: { color: '#0B57D0', fontSize: 13, fontWeight: '800' },
   micIcon: { color: '#627D98', fontSize: 19, lineHeight: 23 },
   input: { flex: 1, minHeight: 46, maxHeight: 92, paddingHorizontal: 7, paddingVertical: 10,
     color: '#102A43', fontSize: 15, lineHeight: 20, textAlignVertical: 'top' },

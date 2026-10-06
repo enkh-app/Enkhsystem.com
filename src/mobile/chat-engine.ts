@@ -1,12 +1,13 @@
-import { ChatApiError, ChatChange, ChatTurnInput, ChatTurnResponse } from './chat-api';
+import { ChatApiError, ChatChange, ChatTurnInput, ChatImageTurnInput, ChatTurnResponse } from './chat-api';
 
 export type LocalMessage = { id: string; clientConversationId: string; clientTurnId: string;
   role: 'user' | 'assistant'; content: string; status: 'pending' | 'sent' | 'failed' };
 export type LocalConversation = { id: string; serverId: string | null; deleted: boolean };
 export type LocalChatState = { cursor: number; conversations: LocalConversation[]; messages: LocalMessage[];
-  pendingTurns: ChatTurnInput[]; pendingDeletes: string[] };
+  pendingTurns: (ChatTurnInput | ChatImageTurnInput)[]; pendingDeletes: string[] };
 export type ChatPersistence = { load(key: string): Promise<LocalChatState | null>; save(key: string, state: LocalChatState): Promise<void> };
 export type ChatTransport = { turn(input: ChatTurnInput): Promise<ChatTurnResponse>;
+  imageTurn?(input: ChatImageTurnInput): Promise<ChatTurnResponse>;
   changes(cursor: number, limit?: number): Promise<{ changes: ChatChange[]; cursor: number; hasMore: boolean }>;
   conversations(limit?: number, before?: string): Promise<{ conversations: { id: string; clientConversationId: string }[]; nextCursor: string | null }>;
   sync(batch: { conversations: unknown[]; messages: unknown[]; deletions?: unknown[] }): Promise<unknown> };
@@ -19,7 +20,8 @@ export class MobileChatEngine {
   private state = empty();
   private busy = false;
   constructor(private readonly persistence: ChatPersistence, private readonly api: ChatTransport,
-    private readonly uuid: () => string, private readonly onChange?: (state: LocalChatState) => void) {}
+    private readonly uuid: () => string, private readonly onChange?: (state: LocalChatState) => void,
+    private readonly cleanupImage?: (uri: string) => Promise<void>) {}
   view() { return copy(this.state); }
   private changed() { this.onChange?.(this.view()); }
   async switchAccount(key: string | null) {
@@ -31,17 +33,25 @@ export class MobileChatEngine {
   }
   private async save() { if (!this.key) throw new Error('MOBILE_SIGN_IN_REQUIRED'); await this.persistence.save(this.key, this.state); }
   async send(clientConversationId: string, message: string, onQueued?: () => void) {
+    return this.queueTurn(clientConversationId, message, undefined, onQueued);
+  }
+  async sendImage(clientConversationId: string, message: string, imageUri: string, onQueued?: () => void) {
+    if (!imageUri.startsWith('file://') || !this.api.imageTurn) throw new Error('INVALID_CHAT_IMAGE');
+    return this.queueTurn(clientConversationId, message, imageUri, onQueued);
+  }
+  private async queueTurn(clientConversationId: string, message: string, imageUri?: string, onQueued?: () => void) {
     if (!this.key) throw new Error('MOBILE_SIGN_IN_REQUIRED');
     if (this.busy) throw new Error('CHAT_BUSY');
     const content = message.trim();
     if (!content || content.length > 12000) throw new Error('INVALID_CHAT_MESSAGE');
-    const input = { clientConversationId, clientTurnId: this.uuid(), clientMessageId: this.uuid(), message: content };
+    const input = { clientConversationId, clientTurnId: this.uuid(), clientMessageId: this.uuid(),
+      message: content, ...(imageUri ? { imageUri } : {}) };
     const next = copy(this.state);
     if (!next.conversations.some((item) => item.id === clientConversationId))
       next.conversations.push({ id: clientConversationId, serverId: null, deleted: false });
     if (next.conversations.find((item) => item.id === clientConversationId)?.deleted) throw new Error('CHAT_DELETED');
     next.messages.push({ id: input.clientMessageId, clientConversationId, clientTurnId: input.clientTurnId,
-      role: 'user', content, status: 'pending' });
+      role: 'user', content: imageUri ? `[Зураг] ${content}` : content, status: 'pending' });
     next.pendingTurns.push(input);
     await this.persistence.save(this.key, next); // Durable local write precedes every network call.
     this.state = next;
@@ -57,7 +67,8 @@ export class MobileChatEngine {
       for (const input of [...this.state.pendingTurns]) {
         if (this.state.conversations.find((item) => item.id === input.clientConversationId)?.deleted) continue;
         try {
-          const response = await this.api.turn(input); // IDs are unchanged on every retry.
+          const response = 'imageUri' in input && input.imageUri
+            ? await this.api.imageTurn!(input) : await this.api.turn(input); // IDs are unchanged on every retry.
           const next = copy(this.state);
           const conversation = next.conversations.find((item) => item.id === input.clientConversationId);
           if (conversation) conversation.serverId = response.conversationId;
@@ -70,6 +81,10 @@ export class MobileChatEngine {
           await this.persistence.save(this.key, next);
           this.state = next;
           this.changed();
+          if ('imageUri' in input && input.imageUri) {
+            try { await this.cleanupImage?.(input.imageUri); }
+            catch { /* The completed turn is already durable; stale local files can be cleaned later. */ }
+          }
         } catch (error) {
           const next = copy(this.state);
           const user = next.messages.find((item) => item.id === input.clientMessageId);
@@ -89,10 +104,17 @@ export class MobileChatEngine {
     const conversation = next.conversations.find((item) => item.id === clientConversationId);
     if (!conversation) return;
     conversation.deleted = true;
+    const discardedImages = next.pendingTurns.filter((item) => item.clientConversationId === clientConversationId &&
+      'imageUri' in item && item.imageUri).map((item) => (item as ChatImageTurnInput).imageUri);
+    next.pendingTurns = next.pendingTurns.filter((item) => item.clientConversationId !== clientConversationId ||
+      !('imageUri' in item && item.imageUri));
     if (!next.pendingDeletes.includes(clientConversationId)) next.pendingDeletes.push(clientConversationId);
     await this.persistence.save(this.key, next);
     this.state = next;
     this.changed();
+    for (const uri of discardedImages) {
+      try { await this.cleanupImage?.(uri); } catch { /* Conversation deletion remains durable. */ }
+    }
     await this.retryDeletes();
   }
   async retryDeletes() {
