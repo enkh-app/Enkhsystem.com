@@ -11,7 +11,7 @@ const TEST_CHAT_API = 'https://api-test.enkhsystems.com';
 
 export function resolveMobileChatApiBase(value?: string): string {
   if (value === undefined) return PRODUCTION_CHAT_API;
-  if (value === TEST_CHAT_API) return TEST_CHAT_API;
+  if (value === PRODUCTION_CHAT_API || value === TEST_CHAT_API) return value;
   throw new Error('INVALID_CHAT_API_BASE');
 }
 

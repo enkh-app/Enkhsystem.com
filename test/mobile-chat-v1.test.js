@@ -30,6 +30,10 @@ test('missing Auth0 public config fails closed and native Chat defaults to produ
     EXPO_PUBLIC_AUTH0_MOBILE_CLIENT_ID: 'public-client-id', EXPO_PUBLIC_AUTH0_AUDIENCE: 'https://api.test' });
   assert.equal(config.apiBase, 'https://api.enkhsystems.com');
   assert.equal(resolveMobileChatApiBase(), 'https://api.enkhsystems.com');
+  assert.equal(resolveMobileChatApiBase('https://api.enkhsystems.com'), 'https://api.enkhsystems.com');
+  for (const value of ['https://api.enkhsystems.com/', 'http://api.enkhsystems.com',
+    'https://api.enkhsystems.com.evil.example', ' https://api.enkhsystems.com',
+    'https://api.enkhsystems.com?token=private']) assert.throws(() => resolveMobileChatApiBase(value), /INVALID_CHAT_API_BASE/);
   assert.throws(() => createMobileChatApi(async () => 'token', fetch, 'https://untrusted.example'));
 });
 

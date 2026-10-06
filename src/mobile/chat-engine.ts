@@ -19,7 +19,11 @@ export class MobileChatEngine {
   private state = empty();
   private busy = false;
   constructor(private readonly persistence: ChatPersistence, private readonly api: ChatTransport,
-    private readonly uuid: () => string, private readonly onChange?: (state: LocalChatState) => void) {}
+    private readonly uuid: () => string, private readonly onChange?: (state: LocalChatState) => void,
+    private readonly onFailure?: (stage: 'retryPending' | 'retryDeletes', error: unknown) => void) {}
+  private failed(stage: 'retryPending' | 'retryDeletes', error: unknown) {
+    try { this.onFailure?.(stage, error); } catch { /* Diagnostics cannot alter retries. */ }
+  }
   view() { return copy(this.state); }
   private changed() { this.onChange?.(this.view()); }
   async switchAccount(key: string | null) {
@@ -71,6 +75,7 @@ export class MobileChatEngine {
           this.state = next;
           this.changed();
         } catch (error) {
+          this.failed('retryPending', error);
           const next = copy(this.state);
           const user = next.messages.find((item) => item.id === input.clientMessageId);
           if (user) user.status = 'failed';
@@ -115,7 +120,10 @@ export class MobileChatEngine {
           await this.persistence.save(this.key, next);
           this.state = next;
           this.changed();
-        } catch { /* Keep tombstone pending; a local-only unsent conversation may not exist remotely yet. */ }
+        } catch (error) {
+          this.failed('retryDeletes', error);
+          /* Keep tombstone pending; a local-only unsent conversation may not exist remotely yet. */
+        }
       }
     } finally { this.busy = false; }
   }

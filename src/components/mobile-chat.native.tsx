@@ -11,6 +11,7 @@ import { createGuestMobileChatApi, createMobileChatApi, resolveMobileChatApiBase
 import { claimMobileGuestChat, mobileGuestAccountKey, mobileGuestToken } from '../mobile/guest-chat.native';
 import { MobileChatEngine, LocalChatState } from '../mobile/chat-engine';
 import { nativeChatPersistence } from '../mobile/chat-storage.native';
+import { chatStartupDiagnostic, ChatStartupStage } from '../mobile/chat-startup-diagnostic';
 
 const empty: LocalChatState = { cursor: 0, conversations: [], messages: [], pendingTurns: [], pendingDeletes: [] };
 
@@ -42,9 +43,11 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
     let active = true;
     setWorking(true);
     void (async () => {
+      let stage: ChatStartupStage = 'config';
       try {
         const apiBase = resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_API_URL);
         const clientType = Platform.OS === 'android' ? 'android' : 'ios';
+        stage = 'account_key';
         const signedInKey = await mobileAccountKey();
         if (signedInKey) {
           try { await claimMobileGuestChat(mobileAccessToken, expoFetch, apiBase, clientType); }
@@ -55,20 +58,25 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
           : createGuestMobileChatApi(() => mobileGuestToken(expoFetch, apiBase, clientType),
             expoFetch, apiBase, clientType);
         const instance = new MobileChatEngine(nativeChatPersistence, client, Crypto.randomUUID,
-          (next) => { if (active) setState(next); });
+          (next) => { if (active) setState(next); },
+          (failedStage, error) => { if (active) setNotice(`${failureNotice(error)} ${chatStartupDiagnostic(failedStage, error)}`); });
         engine.current = instance;
         const key = signedInKey || mobileGuestAccountKey;
         if (!active) return;
         accountRef.current = key;
         setAccount(key);
+        stage = 'switchAccount';
         await instance.switchAccount(key);
         if (!active || !key) return;
         const first = instance.view().conversations.find((item) => !item.deleted);
         setConversation(first?.id || Crypto.randomUUID());
+        stage = 'retryPending';
         await instance.retryPending();
+        stage = 'retryDeletes';
         await instance.retryDeletes();
+        stage = 'pull';
         await instance.pull();
-      } catch (error) { if (active) setNotice(failureNotice(error)); }
+      } catch (error) { if (active) setNotice(`${failureNotice(error)} ${chatStartupDiagnostic(stage, error)}`); }
       finally { if (active) setWorking(false); }
     })();
     return () => { active = false; engine.current = null; };
