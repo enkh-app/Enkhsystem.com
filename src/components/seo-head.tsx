@@ -1,4 +1,5 @@
 import Head from 'expo-router/head';
+import { Platform } from 'react-native';
 
 const SITE_URL = 'https://enkhsystems.com';
 
@@ -11,6 +12,9 @@ type SeoHeadProps = {
 };
 
 export function SeoHead({ title, description, path, noIndex = false, structuredData }: SeoHeadProps) {
+  // Web SEO only: native Head activates iOS Handoff, which this UI does not use.
+  if (Platform.OS !== 'web') return null;
+
   const canonical = `${SITE_URL}${path === '/' ? '' : path}`;
 
   return (
