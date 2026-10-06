@@ -1,4 +1,4 @@
-import { CSSProperties, FormEvent, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import iconUrl from '../../assets/enkh.ico';
 import { enkhTokens } from '../../../src/presentation/enkh-design-tokens';
 import { createPhaseOneAuthAdapter, createPhaseOneChatAdapter, DesktopAuthState, DesktopMessage } from './adapters';
@@ -20,12 +20,19 @@ export function App() {
   const [messages, setMessages] = useState<DesktopMessage[]>([]);
   const [input, setInput] = useState('');
   const [notice, setNotice] = useState('');
+  const [atLatest, setAtLatest] = useState(true);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const keepLatest = useRef(true);
+
+  useEffect(() => {
+    if (keepLatest.current) viewportRef.current?.scrollTo({ top: viewportRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
 
   useEffect(() => { void authAdapter.current().then(setAuth); void chatAdapter.list().then(setMessages); }, [authAdapter, chatAdapter]);
 
   const navigate = (next: DesktopRoute) => {
     if (!isPhaseOneRoute(next)) { setNotice('Энэ хэсэг Desktop-ийн дараагийн үе шатанд орно.'); return; }
-    setNotice(''); setRoute(next);
+    setNotice(''); setRoute(next); keepLatest.current = true; setAtLatest(true);
   };
   const send = async (event: FormEvent) => {
     event.preventDefault();
@@ -42,7 +49,11 @@ export function App() {
       <span className="language" aria-label="Хэл">MN</span>
     </header>
 
-    <main className="viewport">
+    <main ref={viewportRef} className="viewport" onScroll={(event) => {
+      const element = event.currentTarget;
+      const latest = element.scrollTop + element.clientHeight >= element.scrollHeight - 80;
+      keepLatest.current = latest; setAtLatest(latest);
+    }}>
       {route === 'home' && <section className="screen home-screen">
         <p className="greeting">Сайн байна уу, {auth.displayName ?? 'Nasa'}.</p>
         <h1>Энхтэй ярилцах</h1>
@@ -57,6 +68,12 @@ export function App() {
         <div className="screen-title"><div><p className="eyebrow">ENKH AI</p><h1>Чат</h1></div><button className="secondary" onClick={() => setMessages([])}>Шинэ чат</button></div>
         {auth.status === 'signed-out' ? <StateCard title="Chat-аа төхөөрөмж хооронд хадгална уу." body="Desktop authentication adapter Phase 2-т production Auth0-той холбогдоно."><button className="primary" onClick={() => void authAdapter.signIn().then(setAuth)}>Preview нэвтрэх</button></StateCard> : <>
           <div className="messages" aria-live="polite">{messages.length === 0 ? <p className="empty">Энд таны шинэ яриа эхэлнэ.</p> : messages.map((message) => <div key={message.id} className={`bubble ${message.role}`}>{message.content}</div>)}</div>
+          {!atLatest && messages.length > 0 ? <button type="button" className="latest-reply"
+            aria-label="Хамгийн сүүлийн хариулт руу очих"
+            onClick={() => { keepLatest.current = true; setAtLatest(true);
+              viewportRef.current?.scrollTo({ top: viewportRef.current.scrollHeight, behavior: 'smooth' }); }}>
+            Сүүлийн хариулт ↓
+          </button> : null}
           <form className="chat-composer" onSubmit={send}><textarea aria-label="Чат зурвас" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Энхээс асуух..."/><button className="primary" disabled={!input.trim()}>Илгээх</button></form>
         </>}
       </section>}

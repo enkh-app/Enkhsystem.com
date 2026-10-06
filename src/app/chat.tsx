@@ -29,10 +29,14 @@ function WebChatScreen() {
   const [failureKind, setFailureKind] = useState<'validation' | 'network' | 'auth' | 'timeout'>('network');
   const [storageWarning, setStorageWarning] = useState('');
   const scrollRef = useRef<ScrollView>(null);
+  const keepLatest = useRef(true);
+  const [atLatest, setAtLatest] = useState(true);
   const initialSent = useRef(false);
 
   useEffect(() => {
     const loaded = loadWorkspace();
+    keepLatest.current = true;
+    setAtLatest(true);
     setWorkspace(loaded.state);
     if (requestedSessionId) { setSessionId(requestedSessionId); setMessages(entriesFor(loaded.state, requestedSessionId)); }
     else { setSessionId(''); setMessages([]); setFailedText(''); }
@@ -89,7 +93,7 @@ function WebChatScreen() {
   }, [initialPrompt]);
 
   useEffect(() => {
-    const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+    const timer = setTimeout(() => { if (keepLatest.current) scrollRef.current?.scrollToEnd({ animated: true }); }, 50);
     return () => clearTimeout(timer);
   }, [messages, loading, failedText]);
 
@@ -100,12 +104,23 @@ function WebChatScreen() {
       <KeyboardAvoidingView style={styles.layout} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.intro}><View><Text accessibilityRole="header" style={styles.title}>{t('chat.title')}</Text><Text style={styles.subtitle}>{t('chat.subtitle')}</Text></View>{sessionId ? <Pressable accessibilityRole="button" onPress={() => router.replace('/chat')} style={styles.newChat}><Text style={styles.newChatText}>+ {t('chat.new')}</Text></Pressable> : null}</View>
         {!!storageWarning && <Text accessibilityLiveRegion="polite" style={styles.warning}>{storageWarning}</Text>}
-        <ScrollView ref={scrollRef} style={styles.messages} contentContainerStyle={styles.messageContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.messageArea}><ScrollView ref={scrollRef} style={styles.messages}
+          contentContainerStyle={styles.messageContent} keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={100} onScroll={(event) => {
+            const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+            const latest = contentOffset.y + layoutMeasurement.height >= contentSize.height - 80;
+            keepLatest.current = latest; setAtLatest(latest);
+          }}>
           {!messages.length && <View style={[styles.row, styles.enkhRow]}><View style={[styles.bubble, styles.enkhBubble]}><Text style={styles.message}>{t('chat.empty')}</Text></View></View>}
           {messages.map((message) => <View key={message.id} style={[styles.row, message.role === 'user' ? styles.userRow : styles.enkhRow]}><View style={[styles.bubble, message.role === 'user' ? styles.userBubble : styles.enkhBubble]}><Text style={[styles.message, message.role === 'user' && styles.userMessage]}>{message.content}</Text></View></View>)}
           {loading && <View accessibilityLiveRegion="polite" style={styles.thinking}><ActivityIndicator color="#171717" /><Text style={styles.thinkingText}>{t('chat.sending')}</Text></View>}
           {!!failedText && <View accessibilityLiveRegion="assertive" style={styles.failure}><Text style={styles.failureText}>{failureKind === 'auth' ? 'Нэвтрэлтийг Би хэсгээс шалгана уу.' : failureKind === 'timeout' ? 'Хүсэлтийн хугацаа дууслаа.' : failureKind === 'validation' ? 'Хүсэлтийн мэдээллийг шалгаад дахин оролдоно уу.' : 'Сүлжээ эсвэл үйлчилгээний түр алдаа гарлаа.'} Таны асуулт history-д хадгалагдсан.</Text><Pressable accessibilityRole="button" accessibilityLabel="Сүүлийн асуултыг дахин оролдох" onPress={() => void send(failedText, true)} style={styles.retry}><Text style={styles.retryText}>Дахин оролдох</Text></Pressable></View>}
         </ScrollView>
+          {!atLatest && messages.length > 0 ? <Pressable accessibilityRole="button"
+            accessibilityLabel="Хамгийн сүүлийн хариулт руу очих"
+            onPress={() => { keepLatest.current = true; setAtLatest(true); scrollRef.current?.scrollToEnd({ animated: true }); }}
+            style={styles.latestButton}><Text style={styles.latestButtonText}>Сүүлийн хариулт ↓</Text></Pressable> : null}
+        </View>
         <View style={styles.composer}><TextInput accessibilityLabel={t('chat.placeholder')} editable={!loading} multiline value={input} onChangeText={setInput} onKeyPress={(event) => { if (Platform.OS === 'web' && event.nativeEvent.key === 'Enter' && !(event.nativeEvent as typeof event.nativeEvent & { shiftKey?: boolean }).shiftKey) { event.preventDefault(); void send(); } }} onSubmitEditing={() => void send()} placeholder={t('chat.placeholder')} placeholderTextColor="#888" style={styles.input} submitBehavior="submit"/><Pressable accessibilityRole="button" accessibilityLabel={t('chat.send')} disabled={!input.trim() || loading} onPress={() => void send()} style={({ pressed }) => [styles.send, (!input.trim() || loading) && styles.disabled, pressed && styles.pressed]}><Text style={styles.sendText}>{t('chat.send')} ↑</Text></Pressable></View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -113,5 +128,5 @@ function WebChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  page:{flex:1,backgroundColor:'#F4F8FD'},layout:{flex:1,width:'100%',maxWidth:920,alignSelf:'center',paddingHorizontal:20,paddingBottom:16},intro:{paddingTop:20,paddingBottom:14,flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:12},title:{fontSize:30,fontWeight:'900',color:'#102A43'},subtitle:{marginTop:5,fontSize:14,lineHeight:21,color:'#627D98'},newChat:{minHeight:44,justifyContent:'center',paddingHorizontal:14,borderRadius:12,backgroundColor:'#FFF'},newChatText:{fontSize:13,fontWeight:'800',color:'#0B57D0'},warning:{marginBottom:10,padding:10,borderRadius:10,backgroundColor:'#FFF4E3',color:'#6F4A13',fontSize:12},messages:{flex:1,borderRadius:22,backgroundColor:'#EAF2FA'},messageContent:{padding:18,gap:16},row:{maxWidth:'86%'},enkhRow:{alignSelf:'flex-start'},userRow:{alignSelf:'flex-end'},bubble:{paddingHorizontal:17,paddingVertical:13,borderRadius:18},enkhBubble:{backgroundColor:'#FFF',borderWidth:1,borderColor:'#DFEAF7'},userBubble:{backgroundColor:'#0B57D0'},message:{fontSize:16,lineHeight:24,color:'#243B53'},userMessage:{color:'#FFF'},thinking:{alignSelf:'flex-start',flexDirection:'row',alignItems:'center',gap:10,padding:14},thinkingText:{color:'#627D98',fontSize:14},failure:{alignSelf:'stretch',padding:15,borderRadius:14,backgroundColor:'#FFF4F2',borderWidth:1,borderColor:'#F1C9C1'},failureText:{fontSize:13,lineHeight:20,color:'#744139'},retry:{minHeight:44,alignSelf:'flex-start',justifyContent:'center',marginTop:9,paddingHorizontal:14,borderRadius:11,backgroundColor:'#8B2C20'},retryText:{color:'#FFF',fontSize:13,fontWeight:'800'},composer:{marginTop:12,minHeight:66,flexDirection:'row',alignItems:'flex-end',gap:8,padding:8,borderRadius:20,backgroundColor:'#FFF',borderWidth:1,borderColor:'#D7E4F3'},input:{flex:1,minHeight:48,maxHeight:140,paddingHorizontal:12,paddingVertical:12,color:'#102A43',fontSize:16,lineHeight:23,textAlignVertical:'top'},send:{minHeight:48,justifyContent:'center',paddingHorizontal:17,borderRadius:14,backgroundColor:'#0B57D0'},sendText:{color:'#FFF',fontSize:14,fontWeight:'800'},disabled:{opacity:.3},pressed:{opacity:.7},
+  page:{flex:1,backgroundColor:'#F4F8FD'},layout:{flex:1,width:'100%',maxWidth:920,alignSelf:'center',paddingHorizontal:20,paddingBottom:16},intro:{paddingTop:20,paddingBottom:14,flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:12},title:{fontSize:30,fontWeight:'900',color:'#102A43'},subtitle:{marginTop:5,fontSize:14,lineHeight:21,color:'#627D98'},newChat:{minHeight:44,justifyContent:'center',paddingHorizontal:14,borderRadius:12,backgroundColor:'#FFF'},newChatText:{fontSize:13,fontWeight:'800',color:'#0B57D0'},warning:{marginBottom:10,padding:10,borderRadius:10,backgroundColor:'#FFF4E3',color:'#6F4A13',fontSize:12},messageArea:{flex:1,minHeight:0},messages:{flex:1,borderRadius:22,backgroundColor:'#EAF2FA'},latestButton:{position:'absolute',right:16,bottom:16,minHeight:42,justifyContent:'center',paddingHorizontal:14,borderRadius:21,backgroundColor:'#0B57D0'},latestButtonText:{color:'#FFF',fontSize:13,fontWeight:'800'},messageContent:{padding:18,gap:16},row:{maxWidth:'86%'},enkhRow:{alignSelf:'flex-start'},userRow:{alignSelf:'flex-end'},bubble:{paddingHorizontal:17,paddingVertical:13,borderRadius:18},enkhBubble:{backgroundColor:'#FFF',borderWidth:1,borderColor:'#DFEAF7'},userBubble:{backgroundColor:'#0B57D0'},message:{fontSize:16,lineHeight:24,color:'#243B53'},userMessage:{color:'#FFF'},thinking:{alignSelf:'flex-start',flexDirection:'row',alignItems:'center',gap:10},thinkingText:{color:'#627D98',fontSize:14},failure:{alignSelf:'stretch',padding:15,borderRadius:14,backgroundColor:'#FFF4F2',borderWidth:1,borderColor:'#F1C9C1'},failureText:{fontSize:13,lineHeight:20,color:'#744139'},retry:{minHeight:44,alignSelf:'flex-start',justifyContent:'center',marginTop:9,paddingHorizontal:14,borderRadius:11,backgroundColor:'#8B2C20'},retryText:{color:'#FFF',fontSize:13,fontWeight:'800'},composer:{marginTop:12,minHeight:66,flexDirection:'row',alignItems:'flex-end',gap:8,padding:8,borderRadius:20,backgroundColor:'#FFF',borderWidth:1,borderColor:'#D7E4F3'},input:{flex:1,minHeight:48,maxHeight:140,paddingHorizontal:12,paddingVertical:12,color:'#102A43',fontSize:16,lineHeight:23,textAlignVertical:'top'},send:{minHeight:48,justifyContent:'center',paddingHorizontal:17,borderRadius:14,backgroundColor:'#0B57D0'},sendText:{color:'#FFF',fontSize:14,fontWeight:'800'},disabled:{opacity:.3},pressed:{opacity:.7},
 });
