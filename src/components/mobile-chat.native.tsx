@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { NativeChatContent } from './native-chat-content';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
@@ -25,6 +26,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
   const [input, setInput] = useState('');
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('');
+  const [diagnostic, setDiagnostic] = useState('');
   const [greetingName, setGreetingName] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [accountVersion, setAccountVersion] = useState(0);
@@ -42,6 +44,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
   useEffect(() => {
     let active = true;
     setWorking(true);
+    setNotice(''); setDiagnostic('');
     void (async () => {
       let stage: ChatStartupStage = 'config';
       try {
@@ -59,7 +62,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
             expoFetch, apiBase, clientType);
         const instance = new MobileChatEngine(nativeChatPersistence, client, Crypto.randomUUID,
           (next) => { if (active) setState(next); },
-          (failedStage, error) => { if (active) setNotice(`${failureNotice(error)} ${chatStartupDiagnostic(failedStage, error)}`); });
+          (failedStage, error) => { if (active) { setNotice(failureNotice(error)); setDiagnostic(chatStartupDiagnostic(failedStage, error)); } });
         engine.current = instance;
         const key = signedInKey || mobileGuestAccountKey;
         if (!active) return;
@@ -76,7 +79,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
         await instance.retryDeletes();
         stage = 'pull';
         await instance.pull();
-      } catch (error) { if (active) setNotice(`${failureNotice(error)} ${chatStartupDiagnostic(stage, error)}`); }
+      } catch (error) { if (active) { setNotice(failureNotice(error)); setDiagnostic(chatStartupDiagnostic(stage, error)); } }
       finally { if (active) setWorking(false); }
     })();
     return () => { active = false; engine.current = null; };
@@ -96,7 +99,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
 
   const failureNotice = (error: unknown) => {
     if (error instanceof ChatApiError && (error.status === 401 || error.status === 403) ||
-      error instanceof Error && ['MOBILE_SIGN_IN_REQUIRED', 'MOBILE_TOKEN_INVALID'].includes(error.message))
+      error instanceof Error && ['MOBILE_SIGN_IN_REQUIRED', 'MOBILE_REAUTH_REQUIRED', 'MOBILE_TOKEN_INVALID'].includes(error.message))
       return 'Нэвтрэлтийг Би хэсгээс шалгаад дахин оролдоно уу.';
     if (error instanceof ChatApiError && error.code === 'REQUEST_TIMEOUT')
       return 'Хүсэлтийн хугацаа дууслаа. Дахин оролдоно уу.';
@@ -121,9 +124,16 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
     finally { if (engine.current === instance) setWorking(false); }
   };
   const retry = async () => {
-    setWorking(true); setNotice('');
-    try { await engine.current?.retryPending(); await engine.current?.retryDeletes(); await engine.current?.pull(); }
-    catch (error) { setNotice(failureNotice(error)); }
+    setWorking(true); setNotice(''); setDiagnostic('');
+    const instance = engine.current;
+    let stage: ChatStartupStage = 'retryPending';
+    try {
+      if (!instance) { setAccountVersion(value => value + 1); return; }
+      await instance.retryPending();
+      stage = 'retryDeletes'; await instance.retryDeletes();
+      stage = 'pull'; await instance.pull();
+    }
+    catch (error) { if (engine.current === instance) { setNotice(failureNotice(error)); setDiagnostic(chatStartupDiagnostic(stage, error)); } }
     finally { setWorking(false); }
   };
 
@@ -162,7 +172,8 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
             {visible.map((message) => <View key={message.id}
               style={[styles.messageShell, message.role === 'user' ? styles.userShell : styles.assistantShell]}>
               <View style={[styles.bubble, message.role === 'user' ? styles.user : styles.assistant]}>
-                <Text style={message.role === 'user' ? styles.userText : styles.assistantText}>{message.content}</Text>
+                {message.role === 'assistant' ? <NativeChatContent content={message.content} /> :
+                  <Text style={styles.userText}>{message.content}</Text>}
               </View>
               {message.status !== 'sent' ? <Pressable accessibilityRole={message.status === 'failed' ? 'button' : undefined}
                 accessibilityLabel={message.status === 'failed' ? 'Мессежийг дахин илгээх' : undefined}
@@ -179,6 +190,10 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
           </Pressable> : null}
           {!!notice && <View style={styles.notice}>
             <Text accessibilityLiveRegion="polite" numberOfLines={2} style={styles.noticeText}>{notice}</Text>
+            {!!diagnostic && <Pressable accessibilityRole="button" accessibilityLabel="Бүтэн Chat оношилгоо"
+              onPress={() => Alert.alert('Chat оношилгоо', diagnostic)} style={styles.noticeRetry}>
+              <Text style={styles.noticeRetryText}>ⓘ</Text>
+            </Pressable>}
             <Pressable accessibilityRole="button" accessibilityLabel="Chat-ийг дахин ачаалах"
               disabled={working} onPress={() => void retry()} style={styles.noticeRetry}>
               <Text style={styles.noticeRetryText}>Дахин</Text>

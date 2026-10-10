@@ -31,7 +31,7 @@ export function createMobileChatApi(token: () => Promise<string>, transport: typ
   apiBase = PRODUCTION_CHAT_API, clientType: 'ios' | 'android' = 'ios') {
   return createAuthorizedChatApi(async () => {
     const accessToken = await token();
-    if (!accessToken || /[\r\n]/.test(accessToken)) throw new ChatApiError(401, 'MOBILE_SIGN_IN_REQUIRED');
+    if (!accessToken || /[\r\n]/.test(accessToken)) throw new Error('MOBILE_SIGN_IN_REQUIRED');
     return `Bearer ${accessToken}`;
   }, transport, apiBase, clientType);
 }

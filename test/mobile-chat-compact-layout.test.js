@@ -46,6 +46,6 @@ test('pending, retry, error and history remain compact and data-backed', () => {
   assert.match(chat, /messages: \{ flex: 1, minHeight: 0, backgroundColor: '#FFFFFF' \}/);
   assert.match(chat, /state\.conversations\.filter\(\(item\) => !item\.deleted\)/);
   assert.match(chat, /conversationTitle\(item\.id, index\)/);
-  assert.match(chat, /await engine\.current\?\.retryPending\(\)/);
-  assert.match(chat, /await engine\.current\?\.retryDeletes\(\)/);
+  assert.match(chat, /await instance\.retryPending\(\)/);
+  assert.match(chat, /await instance\.retryDeletes\(\)/);
 });

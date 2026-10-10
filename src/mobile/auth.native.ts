@@ -105,14 +105,20 @@ export async function mobileSignIn(): Promise<string> {
 export async function mobileAccessToken(): Promise<string> {
   const stored = await readTokens();
   if (!stored) throw new Error('MOBILE_SIGN_IN_REQUIRED');
-  if (stored.expiresAt > Date.now() + 60000) { checkToken(stored.accessToken); return stored.accessToken; }
-  if (!stored.refreshToken) throw new Error('MOBILE_SIGN_IN_REQUIRED');
+  // JWT expiry is authoritative; missing/stale cached expiresAt must not reject a valid token.
+  const claims = decodeMobileJwtClaims(stored.accessToken);
+  const expiresAt = typeof claims.exp === 'number' ? claims.exp * 1000 : 0;
+  if (expiresAt > Date.now() + (stored.refreshToken ? 60000 : 0)) {
+    checkToken(stored.accessToken); return stored.accessToken;
+  }
+  if (!stored.refreshToken) throw new Error('MOBILE_REAUTH_REQUIRED');
   if (!pendingRefresh) pendingRefresh = (async () => {
     const generation = authGeneration.capture();
     const settings = config();
     const discovery = await AuthSession.fetchDiscoveryAsync(settings.issuer);
     const fresh = await AuthSession.refreshAsync({ clientId: settings.clientId, refreshToken: stored.refreshToken! }, discovery);
-    checkToken(fresh.accessToken);
+    if (checkToken(fresh.accessToken) !== checkToken(stored.accessToken, false))
+      throw new Error('MOBILE_TOKEN_INVALID');
     await saveTokens({ accessToken: fresh.accessToken, refreshToken: fresh.refreshToken || stored.refreshToken,
       expiresAt: (fresh.issuedAt + (fresh.expiresIn || 0)) * 1000,
       displayName: tokenDisplayName(fresh.idToken) || normalizeMobileDisplayName(stored.displayName) || undefined }, generation);
