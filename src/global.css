@@ -105,6 +105,23 @@ body {
   }
 }
 
+@media (max-width: 480px) {
+  #enkh-header {
+    overflow: hidden;
+  }
+
+  #enkh-primary-nav {
+    width: 100%;
+  }
+
+  #enkh-primary-nav > * {
+    flex: 1 1 96px !important;
+    min-width: 0 !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
+
 *:focus-visible {
   outline: 3px solid #2563eb;
   outline-offset: 2px;

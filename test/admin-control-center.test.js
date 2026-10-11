@@ -16,12 +16,14 @@ test('status UI names evidence classes and never fabricates healthy or online st
 });
 test('remote configuration is visibly read-only and release history has a truthful empty state',()=>{
   const config=read('src/components/admin-config-editor.tsx'); const releases=read('src/components/admin-release-history.tsx');
-  assert.match(config,/accessibilityState=\{\{disabled:true\}\}/); assert.doesNotMatch(config,/onPress|fetch/);
+  assert.match(config,/accessibilityState=\{\{disabled:true\}\}/); assert.doesNotMatch(config,/fetch|POST|PUT|PATCH/); assert.match(config,/expanded && rows/);
   assert.match(releases,/if \(!releases\?\.length\)/); assert.match(releases,/releaseTruth/);
 });
 test('responsive layout wraps and avoids fixed viewport widths',()=>{
   const files=['src/app/admin/control.tsx','src/components/admin-control-overview.tsx','src/components/admin-platform-card.tsx'].map(read).join('\n');
-  assert.match(files,/flexWrap:'wrap'/); assert.match(files,/maxWidth:1080/); assert.doesNotMatch(files,/width:\s*(1280|390)/);
+  const css=read('src/global.css');
+  assert.match(files,/flexWrap:'wrap'/); assert.match(files,/maxWidth:1080/); assert.match(files,/flexShrink:1/);
+  assert.match(files,/useWindowDimensions/); assert.match(css,/@media \(max-width: 480px\)/); assert.doesNotMatch(files,/width:\s*(1280|390)/);
 });
 test('Control Center exposes no secret, token, database URL, localhost, or raw user content',()=>{
   const files=['src/app/admin/control.tsx','src/admin/control-api.ts','src/admin/control-types.ts','src/components/admin-control-overview.tsx'].map(read).join('\n');

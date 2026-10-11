@@ -8,6 +8,7 @@ export type PlatformSummary = {
   build?: string;
   releaseId?: string;
   updatedAt?: string;
+  evidenceExpiresAt?: string;
   evidence: EvidenceClass;
 };
 
