@@ -107,6 +107,7 @@ export type AdminOverview = {
   services: Record<string, { configured: boolean; enabled?: boolean }>;
 };
 export type AdminUserSummary = { displayName: string; email: string; status: 'active' | 'suspended'; createdAt: string; lastActivityAt: string | null };
+export type AdminInterests = { generatedAt: string; questions: { days7: number; days30: number; previous7: number; trend: 'up' | 'down' | 'flat' }; topics: { label: string; count: number }[]; topicEvidence: 'structured_action_type' | 'unavailable' };
 
 export type ReminderStatus = 'scheduled' | 'processing' | 'delivered' | 'failed' | 'cancelled';
 export type Reminder = { id: string; title: string; note: string; scheduledAt: string; timezone: string; status: ReminderStatus; deliveryChannel: 'in_app'; createdAt: string; updatedAt: string; deliveredAt: string | null; retryCount: number; version: number };
@@ -188,6 +189,14 @@ export async function getAdminUsers(): Promise<AdminUserSummary[]> {
   const payload = await response.json();
   if (!payload?.success || !Array.isArray(payload.users)) throw new AdminApiError(502);
   return payload.users;
+}
+
+export async function getAdminInterests(): Promise<AdminInterests> {
+  const response = await boundedFetch(`${ENKH_API_URL}/api/admin/interests`, { method: 'GET', credentials: 'include', headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new AdminApiError(response.status);
+  const payload = await response.json();
+  if (!payload?.success || !payload.data?.questions || !Array.isArray(payload.data.topics)) throw new AdminApiError(502);
+  return payload.data;
 }
 
 export const adminLoginUrl = `${ENKH_API_URL}/auth/login?returnTo=${encodeURIComponent('/auth/complete')}`;
