@@ -64,6 +64,14 @@ async function saveTokens(value: StoredTokens, generation = authGeneration.captu
     () => SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(value)),
     () => SecureStore.deleteItemAsync(TOKEN_KEY));
 }
+async function clearRejectedRefresh(stored: StoredTokens, generation: number) {
+  if (!authGeneration.isCurrent(generation)) return;
+  const current = await readTokens();
+  if (!authGeneration.isCurrent(generation) || !current ||
+    current.refreshToken !== stored.refreshToken) return;
+  authGeneration.invalidate();
+  await SecureStore.deleteItemAsync(TOKEN_KEY);
+}
 
 export async function mobileSignIn(): Promise<string> {
   const generation = authGeneration.capture();
@@ -119,9 +127,19 @@ export async function mobileAccessToken(): Promise<string> {
     const generation = authGeneration.capture();
     const settings = config();
     const discovery = await AuthSession.fetchDiscoveryAsync(settings.issuer);
-    const fresh = await AuthSession.refreshAsync({ clientId: settings.clientId, refreshToken: stored.refreshToken! }, discovery);
-    if (checkToken(fresh.accessToken) !== checkToken(stored.accessToken, false))
+    let fresh;
+    try { fresh = await AuthSession.refreshAsync({ clientId: settings.clientId, refreshToken: stored.refreshToken! }, discovery); }
+    catch (error) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'invalid_grant') {
+        await clearRejectedRefresh(stored, generation);
+        throw new Error('MOBILE_REAUTH_REQUIRED');
+      }
+      throw error;
+    }
+    if (checkToken(fresh.accessToken) !== checkToken(stored.accessToken, false)) {
+      await clearRejectedRefresh(stored, generation);
       throw new Error('MOBILE_TOKEN_INVALID');
+    }
     await saveTokens({ accessToken: fresh.accessToken, refreshToken: fresh.refreshToken || stored.refreshToken,
       expiresAt: (fresh.issuedAt + (fresh.expiresIn || 0)) * 1000,
       displayName: tokenDisplayName(fresh.idToken) || normalizeMobileDisplayName(stored.displayName) || undefined }, generation);
@@ -133,6 +151,12 @@ export async function mobileAccessToken(): Promise<string> {
 export async function mobileAccountKey(): Promise<string | null> {
   try { const stored = await readTokens(); if (!stored) return null;
     const sub = checkToken(stored.accessToken, false);
+    const expiry = decodeMobileJwtClaims(stored.accessToken).exp;
+    if (typeof expiry !== 'number' || expiry <= Date.now() / 1000) {
+      if (!stored.refreshToken) return null;
+      try { await mobileAccessToken(); }
+      catch (error) { if (error instanceof Error && error.message === 'MOBILE_REAUTH_REQUIRED') return null; }
+    }
     return await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `enkh-mobile-owner:${sub}`); }
   catch { return null; }
 }
@@ -144,6 +168,15 @@ export async function mobileProfile(): Promise<MobileProfile> {
     const stored = await readTokens();
     if (!stored) return { signedIn: false, displayName: null, preferredName, greetingName: preferredName };
     checkToken(stored.accessToken, false);
+    const expiry = decodeMobileJwtClaims(stored.accessToken).exp;
+    if (typeof expiry !== 'number' || expiry <= Date.now() / 1000) {
+      if (!stored.refreshToken) return { signedIn: false, displayName: null, preferredName, greetingName: preferredName };
+      try { await mobileAccessToken(); }
+      catch (error) {
+        if (error instanceof Error && error.message === 'MOBILE_REAUTH_REQUIRED')
+          return { signedIn: false, displayName: null, preferredName, greetingName: preferredName };
+      }
+    }
     const displayName = normalizeMobileDisplayName(stored.displayName);
     return { signedIn: true, displayName, preferredName,
       greetingName: preferredName || displayName };
