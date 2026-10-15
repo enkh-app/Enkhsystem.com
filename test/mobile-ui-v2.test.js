@@ -12,13 +12,13 @@ const moduleResult = { exports: {} };
 new Function('exports', 'module', code)(moduleResult.exports, moduleResult);
 const { nativePrimaryRoutes, nativePrimaryRoute } = moduleResult.exports;
 
-test('native bottom navigation has four reachable primary destinations and legacy Chat selects Home', () => {
+test('native bottom navigation separates AI Home and people Chat', () => {
   assert.deepEqual(nativePrimaryRoutes.map((item) => [item.label, item.href]), [
-    ['Нүүр', '/'], ['Үйлдэл', '/actions'], ['Мэдлэг', '/knowledge'], ['Би', '/account'],
+    ['Нүүр', '/'], ['Чат', '/chat'], ['Үйлдэл', '/actions'], ['Мэдлэг', '/knowledge'], ['Би', '/account'],
   ]);
-  for (const pathname of ['/', '/actions', '/knowledge', '/account'])
+  for (const pathname of ['/', '/chat', '/actions', '/knowledge', '/account'])
     assert.equal(nativePrimaryRoute(pathname), pathname);
-  assert.equal(nativePrimaryRoute('/chat'), '/');
+  assert.equal(nativePrimaryRoute('/people-chat'), '/chat');
   assert.equal(nativePrimaryRoute('/tools/calculation'), '/actions');
   assert.equal(nativePrimaryRoute('/action-document'), '/actions');
   assert.equal(nativePrimaryRoute('/search'), '/knowledge');
