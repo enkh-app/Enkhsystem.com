@@ -4,11 +4,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 function loadAuth(stored, refreshed) {
-  const cache = new Map(); let refreshes = 0;
+  const cache = new Map(); let refreshes = 0; let deletions = 0;
   const mocks = {
-    'expo-secure-store': { isAvailableAsync: async () => true, getItemAsync: async () => JSON.stringify(stored), setItemAsync: async (_key, value) => { stored = JSON.parse(value); }, deleteItemAsync: async () => {} },
-    'expo-auth-session': { fetchDiscoveryAsync: async () => ({}), refreshAsync: async () => { refreshes++; return refreshed; } },
-    'expo-crypto': {}, 'expo-web-browser': {},
+    'expo-secure-store': { isAvailableAsync: async () => true, getItemAsync: async () => stored ? JSON.stringify(stored) : null,
+      setItemAsync: async (_key, value) => { stored = JSON.parse(value); }, deleteItemAsync: async () => { stored = null; deletions++; } },
+    'expo-auth-session': { fetchDiscoveryAsync: async () => ({}), refreshAsync: async () => {
+      refreshes++; if (refreshed instanceof Error) throw refreshed; return refreshed;
+    } },
+    'expo-crypto': { digestStringAsync: async () => 'a'.repeat(64), CryptoDigestAlgorithm: { SHA256: 'SHA256' } }, 'expo-web-browser': {},
   };
   function load(file) {
     if (cache.has(file)) return cache.get(file);
@@ -21,7 +24,8 @@ function loadAuth(stored, refreshed) {
     }, module);
     return module.exports;
   }
-  return { auth: load('auth.native'), api: load('chat-api'), diagnostic: load('chat-startup-diagnostic'), parts: load('chat-image-parts'), refreshes: () => refreshes };
+  return { auth: load('auth.native'), api: load('chat-api'), diagnostic: load('chat-startup-diagnostic'), parts: load('chat-image-parts'),
+    refreshes: () => refreshes, deletions: () => deletions };
 }
 const token = (seconds, sub = 'test-user') => `e30.${Buffer.from(JSON.stringify({ iss: 'https://auth.example/', aud: 'test-api', sub, exp: Math.floor(Date.now() / 1000) + seconds })).toString('base64url')}.test`;
 test('valid signed-in token without refresh is usable inside 60-second window and ignores stale cached expiry', async () => {
@@ -31,7 +35,7 @@ test('valid signed-in token without refresh is usable inside 60-second window an
 });
 test('expired signed-in profile without refresh fails locally before chat HTTP; real 401 stays distinct', async () => {
   const { auth, api, diagnostic } = loadAuth({ accessToken: token(-30), expiresAt: 0 });
-  assert.equal((await auth.mobileProfile()).signedIn, true);
+  assert.equal((await auth.mobileProfile()).signedIn, false);
   let calls = 0;
   const client = api.createMobileChatApi(auth.mobileAccessToken, async () => { calls++; });
   await assert.rejects(client.changes(0), error => {
@@ -43,12 +47,26 @@ test('expired signed-in profile without refresh fails locally before chat HTTP; 
   const rejected = api.createMobileChatApi(async () => 'test', async () => new Response(JSON.stringify({ error: { code: 'UNAUTHORIZED' } }), { status: 401 }));
   await assert.rejects(rejected.changes(0), error => { assert.match(diagnostic.chatStartupDiagnostic('pull', error), /status=401.*source=api_or_auth/); return true; });
 });
+test('revoked refresh clears local session; offline refresh preserves credentials for retry', async () => {
+  const rejected = loadAuth({ accessToken: token(-30), refreshToken: 'fixture-refresh', expiresAt: 0 },
+    Object.assign(new Error('private provider details'), { code: 'invalid_grant' }));
+  await assert.rejects(rejected.auth.mobileAccessToken(), /MOBILE_REAUTH_REQUIRED/);
+  assert.equal(rejected.deletions(), 1);
+  assert.equal((await rejected.auth.mobileProfile()).signedIn, false);
+
+  const offline = loadAuth({ accessToken: token(-30), refreshToken: 'fixture-refresh', expiresAt: 0 },
+    new Error('network unavailable'));
+  await assert.rejects(offline.auth.mobileAccessToken(), /network unavailable/);
+  assert.equal(offline.deletions(), 0);
+  assert.equal((await offline.auth.mobileProfile()).signedIn, true);
+});
 test('expired token refresh succeeds; refresh cannot switch account identity', async () => {
   const fresh = token(3600);
   const good = loadAuth({ accessToken: token(-10), refreshToken: 'test-refresh', expiresAt: 0 }, { accessToken: fresh, issuedAt: Date.now() / 1000, expiresIn: 3600 });
   assert.equal(await good.auth.mobileAccessToken(), fresh); assert.equal(good.refreshes(), 1);
   const bad = loadAuth({ accessToken: token(-10), refreshToken: 'test-refresh', expiresAt: 0 }, { accessToken: token(3600, 'other-account') });
   await assert.rejects(bad.auth.mobileAccessToken(), /MOBILE_TOKEN_INVALID/);
+  assert.equal(bad.deletions(), 1);
 });
 test('empty local token never fabricates HTTP 401 or calls transport', async () => {
   const { api, diagnostic } = loadAuth(null); let calls = 0;
