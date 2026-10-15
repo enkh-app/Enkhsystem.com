@@ -39,3 +39,23 @@ test('invalid contact ID and missing login never send a request', async () => {
   assert.match(source, /Bearer \$\{bearer\}/);
   assert.doesNotMatch(source, /console\.(?:log|error)/);
 });
+
+test('contacts are listed, added, and removed by ID without accepting malformed responses', async () => {
+  const calls = [];
+  const transport = async (url, init) => {
+    calls.push({ url, init });
+    if (init.method === 'DELETE') return new Response(null, { status: 204 });
+    const body = url.endsWith('/contacts') && init.method === 'GET'
+      ? { contacts: [{ id: bob, name: 'Боб', addedAt: '2026-10-15T00:00:00Z' }] }
+      : { contactId: bob };
+    return new Response(JSON.stringify(body), { status: init.method === 'POST' ? 201 : 200,
+      headers: { 'Content-Type': 'application/json' } });
+  };
+  const api = createPeopleChatApi(async () => 'synthetic-token', transport, 'https://api-test.enkhsystems.com');
+  assert.equal((await api.contacts())[0].name, 'Боб');
+  assert.equal(await api.addContact(bob), bob);
+  await api.removeContact(bob);
+  assert.deepEqual(calls.map(({ init }) => init.method), ['GET', 'POST', 'DELETE']);
+  assert.equal(calls[2].url, `https://api-test.enkhsystems.com/api/people-chat/contacts/${bob}`);
+  await assert.rejects(api.addContact('invalid'), /INVALID_PEOPLE_CHAT_ID/);
+});
