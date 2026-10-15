@@ -66,6 +66,7 @@ test('redirect comparison emits only a boolean, never the raw redirect or OAuth 
   }
   const auth = readFileSync(join(__dirname, '..', 'src', 'mobile', 'auth.native.ts'), 'utf8');
   assert.match(auth, /redirect === 'enkhapp:\/\/auth'/);
+  assert.match(auth, /if \(!redirectMatch\) await atMobileAuthStage\('auth_request'/);
   assert.match(auth, /redirectUri: redirect/g);
   assert.doesNotMatch(auth, /console\.(log|error|warn)\(/);
 });

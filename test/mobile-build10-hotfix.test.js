@@ -42,7 +42,8 @@ test('native Account normalizes profile, editable, avatar and saved display name
   assert.match(account, /mobileSetPreferredName\(normalizeMobileDisplayName\(preferredName\)/);
   assert.match(account, /mobileDisplayInitial\(preferredName \|\| accountName \|\| undefined\)/);
   assert.match(auth, /normalizeMobileDisplayName\(value\)\?\.slice\(0, 40\)/);
-  assert.match(account, /Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана\. Нэвтрэх болон гарах үйлдлийг энэ хэсгээс удирдана\./);
+  assert.match(account, /Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана\. Нэвтрэлт боломжтой үед автоматаар сунгагдана\./);
+  assert.match(account, /accountActionsOpen \? <Pressable[\s\S]*t\('account\.signOut'\)/);
   assert.match(account, /mobileSignOut/);
   assert.doesNotMatch(read('src/components/mobile-chat.native.tsx'), /mobileSignOut|Гарах/);
 });

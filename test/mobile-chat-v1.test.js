@@ -265,7 +265,7 @@ test('auth source never puts token in local SQLite model or ordinary storage', (
     source.indexOf('export async function mobileSignOut'));
   assert.match(localIdentity, /readTokens\(\)/);
   assert.match(localIdentity, /checkToken\(stored\.accessToken, false\)/);
-  assert.doesNotMatch(localIdentity, /mobileAccessToken\(\)/);
+  assert.match(localIdentity, /mobileAccessToken\(\)/);
 });
 
 test('stalled authorization, transport and response body all time out without replay', async (t) => {

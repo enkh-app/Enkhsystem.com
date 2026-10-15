@@ -21,6 +21,7 @@ export default function NativeAccountScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const [notice, setNotice] = useState('');
   const [showAdmin, setShowAdmin] = useState(false);
+  const [accountActionsOpen, setAccountActionsOpen] = useState(false);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -29,7 +30,7 @@ export default function NativeAccountScreen() {
       setSignedIn(!!accountKey);
       setAccountName(normalizeMobileDisplayName(profile.displayName || undefined));
       setPreferredName(normalizeMobileDisplayName(profile.preferredName || undefined) || '');
-      if (!accountKey) { setShowAdmin(false); return; }
+      if (!accountKey) { setShowAdmin(false); setAccountActionsOpen(false); return; }
       void mobileAdminAccessAllowed(adminApi).then((allowed) => {
         if (active) setShowAdmin(allowed);
       });
@@ -59,7 +60,11 @@ export default function NativeAccountScreen() {
   };
   const signOut = async () => {
     setSigningOut(true); setNotice('');
-    try { await mobileSignOut(() => { setSignedIn(false); setAccountName(null); setShowAdmin(false); }); }
+    try {
+      const result = await mobileSignOut(() => { setSignedIn(false); setAccountName(null); setShowAdmin(false); setAccountActionsOpen(false); });
+      if (!result.browserLoggedOut || !result.revoked)
+        setNotice('Энэ төхөөрөмжөөс гарлаа. Auth0-ийн browser session эсвэл token хүчингүй болгох үйлдэл баталгаажаагүй тул бусдын төхөөрөмж дээр дахин нэвтрэхээс өмнө browser-оосоо мөн гарна уу.');
+    }
     catch { setNotice('Гарах үйлдэл амжилтгүй боллоо.'); }
     finally { setSigningOut(false); }
   };
@@ -81,17 +86,16 @@ export default function NativeAccountScreen() {
           <Text style={styles.saveButtonText}>Нэр хадгалах</Text>
         </Pressable>
         {saved ? <Text accessibilityLiveRegion="polite" style={styles.saved}>Хадгаллаа. Нүүр хуудас дээр шинэ нэр харагдана.</Text> : null}
-        <Text style={styles.body}>Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана. Нэвтрэх болон гарах үйлдлийг энэ хэсгээс удирдана.</Text>
+        <Text style={styles.body}>Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана. Нэвтрэлт боломжтой үед автоматаар сунгагдана.</Text>
         <Pressable accessibilityRole="link" onPress={() => router.navigate('/chat')} style={styles.chatButton}>
           <Text style={styles.chatButtonText}>{t('nav.chat')}  →</Text>
+        </Pressable>
+        <Pressable accessibilityRole="link" onPress={() => router.navigate('/people-chat')} style={styles.chatButton}>
+          <Text style={styles.chatButtonText}>Хүмүүсийн чат →</Text>
         </Pressable>
         {!signedIn ? <Pressable accessibilityRole="button" disabled={signingIn}
           onPress={() => void signIn()} style={styles.saveButton}>
           <Text style={styles.saveButtonText}>{signingIn ? 'Нэвтэрч байна…' : 'Нэвтрэх'}</Text>
-        </Pressable> : null}
-        {signedIn ? <Pressable accessibilityRole="button" disabled={signingOut}
-          onPress={() => void signOut()} style={styles.signOutButton}>
-          <Text style={styles.signOutText}>{t('account.signOut')}</Text>
         </Pressable> : null}
         {!!notice && <Text accessibilityLiveRegion="polite" style={styles.notice}>{notice}</Text>}
       </View>
@@ -106,6 +110,18 @@ export default function NativeAccountScreen() {
         {showAdmin ? <Pressable accessibilityRole="link" onPress={() => router.navigate('/admin')} style={styles.moreLink}>
           <Text style={styles.moreIcon}>A</Text><Text style={styles.moreText}>Админ</Text><Text style={styles.moreArrow}>›</Text>
         </Pressable> : null}
+        {signedIn ? <>
+          <Pressable accessibilityRole="button" accessibilityLabel="Акаунт удирдах"
+            accessibilityState={{ expanded: accountActionsOpen }}
+            onPress={() => setAccountActionsOpen((open) => !open)} style={styles.moreLink}>
+            <Text style={styles.moreIcon}>◉</Text><Text style={styles.moreText}>Акаунт удирдах</Text>
+            <Text style={styles.moreArrow}>{accountActionsOpen ? '⌄' : '›'}</Text>
+          </Pressable>
+          {accountActionsOpen ? <Pressable accessibilityRole="button" disabled={signingOut}
+            onPress={() => void signOut()} style={styles.signOutButton}>
+            <Text style={styles.signOutText}>{signingOut ? 'Гарч байна…' : t('account.signOut')}</Text>
+          </Pressable> : null}
+        </> : null}
       </View>
     </ScrollView>
   </SafeAreaView>;
