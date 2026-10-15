@@ -2,6 +2,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 
 export type PeopleThread = { id: string; peerId: string; peerName: string; updatedAt: string };
 export type PeopleMessage = { id: string; senderId: string; content: string; createdAt: string };
+export type PeopleContact = { id: string; name: string; addedAt: string };
 
 export function createPeopleChatApi(token: () => Promise<string>, transport: typeof fetch,
   apiBase: string) {
@@ -20,11 +21,25 @@ export function createPeopleChatApi(token: () => Promise<string>, transport: typ
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
       if (!response.ok) throw new Error(response.status === 401 ? 'MOBILE_SIGN_IN_REQUIRED' : 'PEOPLE_CHAT_UNAVAILABLE');
-      return await response.json() as Record<string, unknown>;
+      return response.status === 204 ? {} : await response.json() as Record<string, unknown>;
     } finally { clearTimeout(timer); }
   }
   function id(value: string) { if (!UUID.test(value)) throw new Error('INVALID_PEOPLE_CHAT_ID'); return value; }
   return {
+    contacts: async () => {
+      const data = await request('/contacts');
+      if (!Array.isArray(data.contacts) || data.contacts.length > 100 ||
+        data.contacts.some((row) => !row || !UUID.test(row.id) || typeof row.name !== 'string' ||
+          typeof row.addedAt !== 'string')) throw new Error('PEOPLE_CHAT_INVALID_RESPONSE');
+      return data.contacts as PeopleContact[];
+    },
+    addContact: async (recipientId: string) => {
+      const data = await request('/contacts', 'POST', { recipientId: id(recipientId) });
+      return id(data.contactId as string);
+    },
+    removeContact: async (recipientId: string) => {
+      await request(`/contacts/${id(recipientId)}`, 'DELETE');
+    },
     me: async () => {
       const data = await request('/me');
       return id(data.accountId as string);
