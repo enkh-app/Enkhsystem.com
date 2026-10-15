@@ -24,6 +24,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
   const [state, setState] = useState<LocalChatState>(empty);
   const [conversation, setConversation] = useState('');
   const [input, setInput] = useState('');
+  const [composerMode, setComposerMode] = useState<'text' | 'voice'>('text');
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('');
   const [diagnostic, setDiagnostic] = useState('');
@@ -200,16 +201,26 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
             </Pressable>
           </View>}
           <View style={styles.composer}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Дуу оруулах (удахгүй)" disabled
-              style={styles.micButton}><Text accessibilityElementsHidden style={styles.micIcon}>🎤</Text></Pressable>
-            <TextInput editable={!working} multiline value={input} onChangeText={setInput} accessibilityLabel={t('chat.placeholder')}
-              placeholder={t('chat.placeholder')} placeholderTextColor="#627D98"
-              returnKeyType="default" style={styles.input} />
-            <Pressable accessibilityRole="button" disabled={!input.trim() || working}
-              accessibilityLabel={t('chat.send')} onPress={() => void send()}
-              style={[styles.sendButton, (!input.trim() || working) && styles.buttonDisabled]}>
-              <Text accessibilityElementsHidden style={styles.sendIcon}>↑</Text>
+            <Pressable accessibilityRole="button"
+              accessibilityLabel={composerMode === 'text' ? 'Ярих горимд шилжих' : 'Бичих горимд шилжих'}
+              accessibilityState={{ selected: composerMode === 'voice' }}
+              onPress={() => setComposerMode((mode) => mode === 'text' ? 'voice' : 'text')}
+              style={[styles.micButton, composerMode === 'voice' && styles.micButtonActive]}>
+              <Text accessibilityElementsHidden style={styles.micIcon}>{composerMode === 'text' ? '🎤' : '⌨'}</Text>
             </Pressable>
+            {composerMode === 'text' ? <>
+              <TextInput editable={!working} multiline value={input} onChangeText={setInput} accessibilityLabel={t('chat.placeholder')}
+                placeholder={t('chat.placeholder')} placeholderTextColor="#627D98"
+                returnKeyType="default" style={styles.input} />
+              <Pressable accessibilityRole="button" disabled={!input.trim() || working}
+                accessibilityLabel={t('chat.send')} onPress={() => void send()}
+                style={[styles.sendButton, (!input.trim() || working) && styles.buttonDisabled]}>
+                <Text accessibilityElementsHidden style={styles.sendIcon}>↑</Text>
+              </Pressable>
+            </> : <View style={styles.voicePanel}>
+              <Text accessibilityRole="header" style={styles.voiceTitle}>Ярих горим</Text>
+              <Text style={styles.voiceHelp}>Дуу таних үйлчилгээ хараахан холбогдоогүй. ⌨ дарж бичих горимд буцна уу.</Text>
+            </View>}
           </View>
         </>}
     </KeyboardAvoidingView>
@@ -256,7 +267,11 @@ const styles = StyleSheet.create({
     borderRadius: 15, borderWidth: 1, borderColor: '#D7E4F3' },
   micButton: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center', borderRadius: 12,
     backgroundColor: '#F1F5FA' },
+  micButtonActive: { backgroundColor: '#DCEAFF' },
   micIcon: { color: '#627D98', fontSize: 19, lineHeight: 23 },
+  voicePanel: { flex: 1, minHeight: 46, justifyContent: 'center', paddingHorizontal: 7 },
+  voiceTitle: { color: '#102A43', fontSize: 14, fontWeight: '700' },
+  voiceHelp: { color: '#627D98', fontSize: 11, lineHeight: 15 },
   input: { flex: 1, minHeight: 46, maxHeight: 92, paddingHorizontal: 7, paddingVertical: 10,
     color: '#102A43', fontSize: 15, lineHeight: 20, textAlignVertical: 'top' },
   sendButton: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center',
