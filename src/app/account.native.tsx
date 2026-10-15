@@ -90,7 +90,7 @@ export default function NativeAccountScreen() {
         <Pressable accessibilityRole="link" onPress={() => router.navigate('/chat')} style={styles.chatButton}>
           <Text style={styles.chatButtonText}>{t('nav.chat')}  →</Text>
         </Pressable>
-        <Pressable accessibilityRole="link" onPress={() => router.navigate('/people-chat')} style={styles.chatButton}>
+        <Pressable accessibilityRole="link" onPress={() => router.navigate('/chat')} style={styles.chatButton}>
           <Text style={styles.chatButtonText}>Хүмүүсийн чат →</Text>
         </Pressable>
         {!signedIn ? <Pressable accessibilityRole="button" disabled={signingIn}
