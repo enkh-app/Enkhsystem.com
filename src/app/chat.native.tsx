@@ -1,5 +1,5 @@
-import MobileChatScreen from '../components/mobile-chat.native';
+import PeopleChatScreen from './people-chat.native';
 
 export default function NativeChatRoute() {
-  return <MobileChatScreen homeMode />;
+  return <PeopleChatScreen />;
 }
