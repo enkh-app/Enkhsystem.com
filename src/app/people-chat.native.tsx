@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { mobileAccessToken, mobileAccountKey } from '../mobile/auth.native';
 import { resolveMobileChatApiBase } from '../mobile/chat-api';
 import { createPeopleChatApi, PeopleMessage, PeopleThread } from '../mobile/people-chat-api';
+import { QuickEmojiPicker } from '../components/quick-emoji-picker.native';
+import { appendQuickEmoji } from '../mobile/emoji-composer';
 
 export default function PeopleChatScreen() {
   const [self, setSelf] = useState('');
@@ -15,6 +17,7 @@ export default function PeopleChatScreen() {
   const [selected, setSelected] = useState('');
   const [recipient, setRecipient] = useState('');
   const [draft, setDraft] = useState('');
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const session = useRef(0);
@@ -34,7 +37,7 @@ export default function PeopleChatScreen() {
   useFocusEffect(useCallback(() => {
     let active = true;
     const generation = ++session.current;
-    setSelf(''); setThreads([]); setMessages([]); setSelected('');
+    setSelf(''); setThreads([]); setMessages([]); setSelected(''); setEmojiOpen(false);
     void (async () => {
       try {
         if (!await mobileAccountKey()) { if (active) setError('Эхлээд Би хэсэгт нэвтэрнэ үү.'); return; }
@@ -65,7 +68,7 @@ export default function PeopleChatScreen() {
         <Text style={styles.buttonText}>Чат эхлүүлэх</Text></Pressable>
       <Text style={styles.section}>Ярианууд</Text>
       {threads.map((thread) => <Pressable key={thread.id} accessibilityRole="button"
-        onPress={() => void run(async () => { setSelected(thread.id); setMessages(await api.messages(thread.id)); })}
+        onPress={() => void run(async () => { setEmojiOpen(false); setSelected(thread.id); setMessages(await api.messages(thread.id)); })}
         style={styles.row}><Text style={styles.link}>{thread.peerName || thread.peerId}</Text></Pressable>)}
       {selected ? <>
         <Text style={styles.section}>Мессеж</Text>
@@ -73,13 +76,19 @@ export default function PeopleChatScreen() {
           <Text>{item.senderId === self ? 'Та' : 'Танил'}: {item.content}</Text></View>)}
         <TextInput accessibilityLabel="Мессеж" value={draft} onChangeText={setDraft}
           multiline maxLength={4000} placeholder="Мессеж бичнэ үү" style={styles.input} />
+        <Pressable accessibilityRole="button" accessibilityLabel={emojiOpen ? 'Эможи хэсгийг хаах' : 'Эможи сонгох'}
+          accessibilityState={{ expanded: emojiOpen }} onPress={() => setEmojiOpen((open) => !open)} style={styles.emojiToggle}>
+          <Text style={styles.emojiToggleText}>🙂 Эможи</Text>
+        </Pressable>
+        {emojiOpen ? <QuickEmojiPicker onClose={() => setEmojiOpen(false)}
+          onSelect={(emoji) => { if (!busy) setDraft((value) => appendQuickEmoji(value, emoji, 4000)); }} /> : null}
         <Pressable accessibilityRole="button" disabled={busy || !draft.trim()} style={styles.button}
           onPress={() => void run(async () => {
             const content = draft.trim();
             if (!pendingSend.current || pendingSend.current.thread !== selected || pendingSend.current.content !== content)
               pendingSend.current = { thread: selected, content, id: Crypto.randomUUID() };
             await api.send(selected, pendingSend.current.id, content);
-            pendingSend.current = null; setDraft(''); await refresh(selected);
+            pendingSend.current = null; setDraft(''); setEmojiOpen(false); await refresh(selected);
           })}><Text style={styles.buttonText}>Илгээх</Text></Pressable>
       </> : null}
       {busy ? <ActivityIndicator /> : null}
@@ -100,6 +109,8 @@ const styles = StyleSheet.create({
     padding: 12, minHeight: 48, color: '#102A43' },
   button: { backgroundColor: '#2F6FE4', padding: 14, borderRadius: 10, alignItems: 'center' },
   buttonText: { color: '#FFFFFF', fontWeight: '800' },
+  emojiToggle: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: 10 },
+  emojiToggleText: { color: '#486581', fontSize: 15, fontWeight: '700' },
   section: { marginTop: 14, color: '#102A43', fontSize: 18, fontWeight: '800' },
   row: { padding: 14, borderRadius: 10, backgroundColor: '#FFFFFF' },
   error: { color: '#9A3412' },
