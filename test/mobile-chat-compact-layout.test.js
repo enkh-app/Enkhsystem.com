@@ -29,8 +29,10 @@ test('message viewport and compact composer preserve keyboard and safe-area layo
   assert.match(chat, /messages: \{ flex: 1, minHeight: 0/);
   assert.match(chat, /composer: \{ flexShrink: 0/);
   assert.match(chat, /maxHeight: 92/);
-  assert.match(chat, /accessibilityLabel="Дуу оруулах \(удахгүй\)" disabled/);
-  assert.match(chat, />🎤<\/Text>/);
+  assert.match(chat, /onPress=\{\(\) => setComposerMode\(\(mode\) => mode === 'text' \? 'voice' : 'text'\)\}/);
+  assert.match(chat, /'Ярих горимд шилжих' : 'Бичих горимд шилжих'/);
+  assert.match(chat, /composerMode === 'text' \? <>[\s\S]*<TextInput/);
+  assert.match(chat, /Дуу таних үйлчилгээ хараахан холбогдоогүй/);
   assert.match(chat, /sendButton: \{ width: 48, height: 48/);
   assert.match(chat, /accessibilityLabel=\{t\('chat\.send'\)\}/);
   assert.match(chat, /placeholderTextColor="#627D98"/);
