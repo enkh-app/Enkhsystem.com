@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NativeChatContent } from './native-chat-content';
+import { QuickEmojiPicker } from './quick-emoji-picker.native';
 import { VoiceRecordingPanel } from './voice-recording-panel.native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { claimMobileGuestChat, mobileGuestAccountKey, mobileGuestToken } from '.
 import { MobileChatEngine, LocalChatState } from '../mobile/chat-engine';
 import { nativeChatPersistence } from '../mobile/chat-storage.native';
 import { chatStartupDiagnostic, ChatStartupStage } from '../mobile/chat-startup-diagnostic';
+import { appendQuickEmoji } from '../mobile/emoji-composer';
 
 const empty: LocalChatState = { cursor: 0, conversations: [], messages: [], pendingTurns: [], pendingDeletes: [] };
 
@@ -26,6 +28,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
   const [conversation, setConversation] = useState('');
   const [input, setInput] = useState('');
   const [composerMode, setComposerMode] = useState<'text' | 'voice'>('text');
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState('');
   const [diagnostic, setDiagnostic] = useState('');
@@ -92,7 +95,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
     void mobileAccountKey().then((key) => {
       const next = key || mobileGuestAccountKey;
       if (active && accountRef.current && next !== accountRef.current) {
-        setInput(''); setState(empty); setAccount(null);
+        setInput(''); setEmojiOpen(false); setState(empty); setAccount(null);
         setAccountVersion((value) => value + 1);
       }
     });
@@ -120,7 +123,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
     if (!instance) { setNotice('Чат бэлэн болоогүй байна. Дахин оролдоно уу.'); return; }
     setWorking(true); setNotice('');
     try { await instance.send(conversation || Crypto.randomUUID(), text, () => {
-      if (engine.current === instance) setInput('');
+      if (engine.current === instance) { setInput(''); setEmojiOpen(false); }
     }); }
     catch (error) { if (engine.current === instance) setNotice(failureNotice(error)); }
     finally { if (engine.current === instance) setWorking(false); }
@@ -201,16 +204,22 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
               <Text style={styles.noticeRetryText}>Дахин</Text>
             </Pressable>
           </View>}
+          {composerMode === 'text' && emojiOpen ? <QuickEmojiPicker onClose={() => setEmojiOpen(false)}
+            onSelect={(emoji) => { if (!working) setInput((draft) => appendQuickEmoji(draft, emoji, 12000)); }} /> : null}
           <View style={styles.composer}>
             <Pressable accessibilityRole="button"
               accessibilityLabel={composerMode === 'text' ? 'Ярих горимд шилжих' : 'Бичих горимд шилжих'}
               accessibilityState={{ selected: composerMode === 'voice' }}
-              onPress={() => setComposerMode((mode) => mode === 'text' ? 'voice' : 'text')}
+              onPress={() => { setEmojiOpen(false); setComposerMode((mode) => mode === 'text' ? 'voice' : 'text'); }}
               style={[styles.micButton, composerMode === 'voice' && styles.micButtonActive]}>
               <Text accessibilityElementsHidden style={styles.micIcon}>{composerMode === 'text' ? '🎤' : '⌨'}</Text>
             </Pressable>
             {composerMode === 'text' ? <>
+              <Pressable accessibilityRole="button" accessibilityLabel={emojiOpen ? 'Эможи хэсгийг хаах' : 'Эможи сонгох'}
+                accessibilityState={{ expanded: emojiOpen }} onPress={() => setEmojiOpen((open) => !open)}
+                style={styles.emojiToggle}><Text accessibilityElementsHidden style={styles.emojiToggleText}>🙂</Text></Pressable>
               <TextInput editable={!working} multiline value={input} onChangeText={setInput} accessibilityLabel={t('chat.placeholder')}
+                maxLength={12000}
                 placeholder={t('chat.placeholder')} placeholderTextColor="#627D98"
                 returnKeyType="default" style={styles.input} />
               <Pressable accessibilityRole="button" disabled={!input.trim() || working}
@@ -267,6 +276,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5FA' },
   micButtonActive: { backgroundColor: '#DCEAFF' },
   micIcon: { color: '#627D98', fontSize: 19, lineHeight: 23 },
+  emojiToggle: { width: 42, height: 46, alignItems: 'center', justifyContent: 'center' },
+  emojiToggleText: { fontSize: 21 },
   input: { flex: 1, minHeight: 46, maxHeight: 92, paddingHorizontal: 7, paddingVertical: 10,
     color: '#102A43', fontSize: 15, lineHeight: 20, textAlignVertical: 'top' },
   sendButton: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center',
