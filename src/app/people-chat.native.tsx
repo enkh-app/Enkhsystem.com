@@ -2,17 +2,18 @@ import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 import { fetch as expoFetch } from 'expo/fetch';
 import * as Crypto from 'expo-crypto';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { mobileAccessToken, mobileAccountKey } from '../mobile/auth.native';
 import { resolveMobileChatApiBase } from '../mobile/chat-api';
-import { createPeopleChatApi, PeopleMessage, PeopleThread } from '../mobile/people-chat-api';
+import { createPeopleChatApi, PeopleContact, PeopleMessage, PeopleThread } from '../mobile/people-chat-api';
 import { QuickEmojiPicker } from '../components/quick-emoji-picker.native';
 import { appendQuickEmoji } from '../mobile/emoji-composer';
 
 export default function PeopleChatScreen() {
   const [self, setSelf] = useState('');
   const [threads, setThreads] = useState<PeopleThread[]>([]);
+  const [contacts, setContacts] = useState<PeopleContact[]>([]);
   const [messages, setMessages] = useState<PeopleMessage[]>([]);
   const [selected, setSelected] = useState('');
   const [recipient, setRecipient] = useState('');
@@ -26,9 +27,9 @@ export default function PeopleChatScreen() {
     resolveMobileChatApiBase(process.env.EXPO_PUBLIC_ENKH_API_URL));
 
   const refresh = async (thread = selected, generation = session.current) => {
-    const [accountId, list] = await Promise.all([api.me(), api.threads()]);
+    const [accountId, list, savedContacts] = await Promise.all([api.me(), api.threads(), api.contacts()]);
     if (generation !== session.current) return;
-    setSelf(accountId); setThreads(list);
+    setSelf(accountId); setThreads(list); setContacts(savedContacts);
     if (thread) {
       const next = await api.messages(thread);
       if (generation === session.current) setMessages(next);
@@ -37,7 +38,7 @@ export default function PeopleChatScreen() {
   useFocusEffect(useCallback(() => {
     let active = true;
     const generation = ++session.current;
-    setSelf(''); setThreads([]); setMessages([]); setSelected(''); setEmojiOpen(false);
+    setSelf(''); setThreads([]); setContacts([]); setMessages([]); setSelected(''); setEmojiOpen(false);
     void (async () => {
       try {
         if (!await mobileAccountKey()) { if (active) setError('Эхлээд Би хэсэгт нэвтэрнэ үү.'); return; }
@@ -45,7 +46,7 @@ export default function PeopleChatScreen() {
       } catch { if (active) setError('Чат түр холбогдсонгүй.'); }
     })();
     return () => { active = false; session.current += 1; pendingSend.current = null;
-      setSelf(''); setThreads([]); setMessages([]); setSelected(''); };
+      setSelf(''); setThreads([]); setContacts([]); setMessages([]); setSelected(''); };
   }, []));
 
   const run = async (operation: () => Promise<void>) => {
@@ -58,14 +59,33 @@ export default function PeopleChatScreen() {
     <View style={styles.top}><Pressable accessibilityRole="button" onPress={() => router.back()}>
       <Text style={styles.link}>‹ Буцах</Text></Pressable><Text style={styles.title}>Хүмүүсийн чат</Text></View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.help}>Өөрийн ID-г танилдаа дамжуулаад, түүний ID-г оруулж чат эхлүүлнэ.</Text>
+      <Text style={styles.help}>Өөрийн ID-г танилдаа дамжуулаад, түүний ID-г оруулж жагсаалтдаа нэмнэ. Нэмэхэд нөгөө хүний жагсаалт автоматаар өөрчлөгдөхгүй.</Text>
       {self ? <Text selectable style={styles.id}>Миний ID: {self}</Text> : null}
       <TextInput accessibilityLabel="Танилын ID" value={recipient} onChangeText={setRecipient}
         autoCapitalize="none" placeholder="Танилын ID" style={styles.input} />
-      <Pressable accessibilityRole="button" disabled={busy || !self} style={styles.button}
-        onPress={() => void run(async () => { const thread = await api.start(recipient.trim().toLowerCase());
-          setSelected(thread); setRecipient(''); await refresh(thread); })}>
-        <Text style={styles.buttonText}>Чат эхлүүлэх</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={busy || !self || !recipient.trim()} style={styles.button}
+        onPress={() => void run(async () => { await api.addContact(recipient.trim().toLowerCase());
+          setRecipient(''); await refresh(''); })}>
+        <Text style={styles.buttonText}>Танил нэмэх</Text></Pressable>
+      <Text style={styles.section}>Миний танилууд</Text>
+      {!contacts.length ? <Text style={styles.help}>Одоогоор танил нэмээгүй байна.</Text> : null}
+      {contacts.map((contact) => <View key={contact.id} style={styles.row}>
+        <Text style={styles.contactName}>{contact.name || 'ENKH хэрэглэгч'}</Text>
+        <View style={styles.contactActions}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${contact.name || 'Танил'}-тай чатлах`}
+            disabled={busy} onPress={() => void run(async () => {
+              const thread = await api.start(contact.id); setSelected(thread); setMessages(await api.messages(thread));
+              await refresh(thread);
+            })} style={styles.contactButton}><Text style={styles.link}>Чатлах</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${contact.name || 'Танил'}-ыг жагсаалтаас хасах`}
+            disabled={busy} onPress={() => Alert.alert('Танилыг хасах уу?', 'Өмнөх яриа хадгалагдана.', [
+              { text: 'Болих', style: 'cancel' },
+              { text: 'Хасах', style: 'destructive', onPress: () => void run(async () => {
+                await api.removeContact(contact.id); await refresh('');
+              }) },
+            ])} style={styles.contactButton}><Text style={styles.link}>Хасах</Text></Pressable>
+        </View>
+      </View>)}
       <Text style={styles.section}>Ярианууд</Text>
       {threads.map((thread) => <Pressable key={thread.id} accessibilityRole="button"
         onPress={() => void run(async () => { setEmojiOpen(false); setSelected(thread.id); setMessages(await api.messages(thread.id)); })}
@@ -113,5 +133,8 @@ const styles = StyleSheet.create({
   emojiToggleText: { color: '#486581', fontSize: 15, fontWeight: '700' },
   section: { marginTop: 14, color: '#102A43', fontSize: 18, fontWeight: '800' },
   row: { padding: 14, borderRadius: 10, backgroundColor: '#FFFFFF' },
+  contactName: { color: '#102A43', fontSize: 15, fontWeight: '700' },
+  contactActions: { flexDirection: 'row', gap: 16, marginTop: 5 },
+  contactButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 },
   error: { color: '#9A3412' },
 });
