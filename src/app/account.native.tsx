@@ -59,7 +59,11 @@ export default function NativeAccountScreen() {
   };
   const signOut = async () => {
     setSigningOut(true); setNotice('');
-    try { await mobileSignOut(() => { setSignedIn(false); setAccountName(null); setShowAdmin(false); }); }
+    try {
+      const result = await mobileSignOut(() => { setSignedIn(false); setAccountName(null); setShowAdmin(false); });
+      if (!result.browserLoggedOut || !result.revoked)
+        setNotice('Энэ төхөөрөмжөөс гарлаа. Auth0-ийн browser session эсвэл token хүчингүй болгох үйлдэл баталгаажаагүй тул бусдын төхөөрөмж дээр дахин нэвтрэхээс өмнө browser-оосоо мөн гарна уу.');
+    }
     catch { setNotice('Гарах үйлдэл амжилтгүй боллоо.'); }
     finally { setSigningOut(false); }
   };
@@ -84,6 +88,9 @@ export default function NativeAccountScreen() {
         <Text style={styles.body}>Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана. Нэвтрэх болон гарах үйлдлийг энэ хэсгээс удирдана.</Text>
         <Pressable accessibilityRole="link" onPress={() => router.navigate('/chat')} style={styles.chatButton}>
           <Text style={styles.chatButtonText}>{t('nav.chat')}  →</Text>
+        </Pressable>
+        <Pressable accessibilityRole="link" onPress={() => router.navigate('/people-chat')} style={styles.chatButton}>
+          <Text style={styles.chatButtonText}>Хүмүүсийн чат →</Text>
         </Pressable>
         {!signedIn ? <Pressable accessibilityRole="button" disabled={signingIn}
           onPress={() => void signIn()} style={styles.saveButton}>
