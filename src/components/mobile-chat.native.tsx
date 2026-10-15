@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NativeChatContent } from './native-chat-content';
+import { VoiceRecordingPanel } from './voice-recording-panel.native';
 import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
@@ -217,10 +218,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
                 style={[styles.sendButton, (!input.trim() || working) && styles.buttonDisabled]}>
                 <Text accessibilityElementsHidden style={styles.sendIcon}>↑</Text>
               </Pressable>
-            </> : <View style={styles.voicePanel}>
-              <Text accessibilityRole="header" style={styles.voiceTitle}>Ярих горим</Text>
-              <Text style={styles.voiceHelp}>Дуу таних үйлчилгээ хараахан холбогдоогүй. ⌨ дарж бичих горимд буцна уу.</Text>
-            </View>}
+            </> : <VoiceRecordingPanel />}
           </View>
         </>}
     </KeyboardAvoidingView>
@@ -269,9 +267,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5FA' },
   micButtonActive: { backgroundColor: '#DCEAFF' },
   micIcon: { color: '#627D98', fontSize: 19, lineHeight: 23 },
-  voicePanel: { flex: 1, minHeight: 46, justifyContent: 'center', paddingHorizontal: 7 },
-  voiceTitle: { color: '#102A43', fontSize: 14, fontWeight: '700' },
-  voiceHelp: { color: '#627D98', fontSize: 11, lineHeight: 15 },
   input: { flex: 1, minHeight: 46, maxHeight: 92, paddingHorizontal: 7, paddingVertical: 10,
     color: '#102A43', fontSize: 15, lineHeight: 20, textAlignVertical: 'top' },
   sendButton: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center',
