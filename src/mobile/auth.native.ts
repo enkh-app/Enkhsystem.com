@@ -76,6 +76,9 @@ export async function mobileSignIn(): Promise<string> {
   });
   const redirect = await atMobileAuthStage('auth_request', redirectUri);
   const redirectMatch = redirect === 'enkhapp://auth';
+  if (!redirectMatch) await atMobileAuthStage('auth_request', () => {
+    throw new Error('MOBILE_AUTH_CALLBACK_MISMATCH');
+  }, redirectMatch);
   const request = await atMobileAuthStage('auth_request', () => new AuthSession.AuthRequest({
     clientId: settings.clientId, redirectUri: redirect,
     responseType: AuthSession.ResponseType.Code, usePKCE: true,
