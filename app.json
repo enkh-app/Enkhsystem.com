@@ -52,6 +52,14 @@
       ],
       "expo-secure-store",
       "expo-sqlite",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "ENKH AI-д дуугаар асуулт бичихийн тулд микрофон ашиглахыг зөвшөөрнө үү.",
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
+        }
+      ],
       "expo-image",
       "expo-web-browser"
     ],
