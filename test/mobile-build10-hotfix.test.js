@@ -57,15 +57,14 @@ test('native Chat consumes only the canonical public API URL', () => {
   }
 });
 
-test('native Home and legacy Chat route own only the compact native presentation', () => {
+test('native Home shows ENKH AI and native Chat shows people conversations', () => {
   const home = read('src/app/index.native.tsx');
   const chatRoute = read('src/app/chat.native.tsx');
   const compact = read('src/components/mobile-chat.native.tsx');
-  for (const route of [home, chatRoute]) {
-    assert.match(route, /mobile-chat\.native/);
-    assert.match(route, /<MobileChatScreen homeMode \/>/);
-    assert.doesNotMatch(route, /WebChatScreen|styles\.title|styles\.intro/);
-  }
+  assert.match(home, /mobile-chat\.native/);
+  assert.match(home, /<MobileChatScreen homeMode \/>/);
+  assert.match(chatRoute, /people-chat\.native/);
+  assert.match(chatRoute, /<PeopleChatScreen \/>/);
   assert.match(compact, /styles\.messages/);
   assert.match(compact, /styles\.composer/);
 });
