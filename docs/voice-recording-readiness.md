@@ -1,0 +1,7 @@
+# Native voice recording readiness
+
+The mobile Chat composer switches between writing and speaking. Speaking mode records AAC `.m4a` locally after microphone permission, stops at 260 seconds or when the app backgrounds, rejects empty files and files above 10 MB, and removes temporary files when discarded or the panel closes. The recording is not uploaded and is not sent as a chat turn.
+
+`src/mobile/voice-api.ts` prepares an authenticated multipart request for `POST /api/voice/transcribe`, with `audio`, `language=mn-MN`, and the current client type. It is intentionally not called from the composer. The backend route exists in separate voice source, but has not been merged, configured, or tested against staging Auth0, database, and a real provider.
+
+To complete voice transcription: deploy the reviewed backend voice endpoint to staging; verify real `.m4a` handling, 260-second sample and 10 MB limit, 401/403/404/429/503 and provider timeout; then connect the adapter to the panel. Show the recognized text in the editable composer for review before sending. Add explicit retry and cancellation, and ensure the file is deleted after success or cancellation. A new iOS/Android binary is required for the `expo-audio` native permission plugin, followed by device tests of permission denial, app backgrounding, mode switches and recording cleanup. No production rollout is implied by this preparation.

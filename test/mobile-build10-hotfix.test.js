@@ -42,7 +42,8 @@ test('native Account normalizes profile, editable, avatar and saved display name
   assert.match(account, /mobileSetPreferredName\(normalizeMobileDisplayName\(preferredName\)/);
   assert.match(account, /mobileDisplayInitial\(preferredName \|\| accountName \|\| undefined\)/);
   assert.match(auth, /normalizeMobileDisplayName\(value\)\?\.slice\(0, 40\)/);
-  assert.match(account, /Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана\. Нэвтрэх болон гарах үйлдлийг энэ хэсгээс удирдана\./);
+  assert.match(account, /Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана\. Нэвтрэлт боломжтой үед автоматаар сунгагдана\./);
+  assert.match(account, /accountActionsOpen \? <Pressable[\s\S]*t\('account\.signOut'\)/);
   assert.match(account, /mobileSignOut/);
   assert.doesNotMatch(read('src/components/mobile-chat.native.tsx'), /mobileSignOut|Гарах/);
 });
@@ -56,15 +57,14 @@ test('native Chat consumes only the canonical public API URL', () => {
   }
 });
 
-test('native Home and legacy Chat route own only the compact native presentation', () => {
+test('native Home shows ENKH AI and native Chat shows people conversations', () => {
   const home = read('src/app/index.native.tsx');
   const chatRoute = read('src/app/chat.native.tsx');
   const compact = read('src/components/mobile-chat.native.tsx');
-  for (const route of [home, chatRoute]) {
-    assert.match(route, /mobile-chat\.native/);
-    assert.match(route, /<MobileChatScreen homeMode \/>/);
-    assert.doesNotMatch(route, /WebChatScreen|styles\.title|styles\.intro/);
-  }
+  assert.match(home, /mobile-chat\.native/);
+  assert.match(home, /<MobileChatScreen homeMode \/>/);
+  assert.match(chatRoute, /people-chat\.native/);
+  assert.match(chatRoute, /<PeopleChatScreen \/>/);
   assert.match(compact, /styles\.messages/);
   assert.match(compact, /styles\.composer/);
 });
