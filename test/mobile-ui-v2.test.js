@@ -45,7 +45,7 @@ test('native Home is Chat-first and existing web dashboard remains selected on w
   assert.match(chat, /Сайн байна уу, Nasa\./);
   assert.match(chat, /new MobileChatEngine\(nativeChatPersistence/);
   assert.match(chat, /retryPending\(\)/);
-  assert.match(chat, /await engine\.current\?\.send/);
+  assert.match(chat, /await instance\.send/);
   assert.doesNotMatch(native, /Дуугаар/);
   const legacy = read('src/app/chat.tsx');
   assert.match(legacy, /Platform\.OS === 'web' \? <WebChatScreen \/> : <MobileHome \/>/);

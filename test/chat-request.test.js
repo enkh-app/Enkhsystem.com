@@ -59,3 +59,25 @@ test('web chat sends on Enter while preserving Shift+Enter for a new line', () =
   assert.match(chat, /event\.preventDefault\(\)/);
   assert.match(chat, /void send\(\)/);
 });
+
+test('web request timeout releases stalled transport and body without replay', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const bodyStalled of [false, true]) {
+    let calls = 0;
+    let signal;
+    const loaded = loadApi(async (_url, options) => {
+      calls++; signal = options.signal;
+      if (!bodyStalled) return new Promise(() => {});
+      return { ok: true, status: 200, json: () => new Promise(() => {}) };
+    });
+    try {
+      const pending = loaded.api.sendMessage('draft');
+      const rejection = assert.rejects(pending, (error) => error.code === 'REQUEST_TIMEOUT');
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+      t.mock.timers.tick(45000);
+      await rejection;
+      assert.equal(calls, 1);
+      assert.equal(signal.aborted, true);
+    } finally { loaded.restore(); }
+  }
+});

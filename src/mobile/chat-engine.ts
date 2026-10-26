@@ -30,7 +30,7 @@ export class MobileChatEngine {
     return this.view();
   }
   private async save() { if (!this.key) throw new Error('MOBILE_SIGN_IN_REQUIRED'); await this.persistence.save(this.key, this.state); }
-  async send(clientConversationId: string, message: string) {
+  async send(clientConversationId: string, message: string, onQueued?: () => void) {
     if (!this.key) throw new Error('MOBILE_SIGN_IN_REQUIRED');
     if (this.busy) throw new Error('CHAT_BUSY');
     const content = message.trim();
@@ -46,6 +46,7 @@ export class MobileChatEngine {
     await this.persistence.save(this.key, next); // Durable local write precedes every network call.
     this.state = next;
     this.changed();
+    onQueued?.();
     await this.retryPending();
     return input.clientTurnId;
   }
@@ -69,13 +70,15 @@ export class MobileChatEngine {
           await this.persistence.save(this.key, next);
           this.state = next;
           this.changed();
-        } catch {
+        } catch (error) {
           const next = copy(this.state);
           const user = next.messages.find((item) => item.id === input.clientMessageId);
           if (user) user.status = 'failed';
           await this.persistence.save(this.key, next);
           this.state = next; // Preserve the exact request for safe later retry.
           this.changed();
+          if (error instanceof ChatApiError && (error.status === 401 || error.status === 403) ||
+            error instanceof Error && ['MOBILE_SIGN_IN_REQUIRED', 'MOBILE_TOKEN_INVALID'].includes(error.message)) throw error;
         }
       }
     } finally { this.busy = false; }

@@ -1,13 +1,13 @@
-﻿import { useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import { fetch as expoFetch } from 'expo/fetch';
 import { AppHeader } from './app-header.native';
 import { useI18n } from '../i18n';
 import { mobileAccountKey, mobileAccessToken, mobileProfile } from '../mobile/auth.native';
-import { createGuestMobileChatApi, createMobileChatApi, resolveMobileChatApiBase } from '../mobile/chat-api';
+import { createGuestMobileChatApi, createMobileChatApi, resolveMobileChatApiBase, ChatApiError } from '../mobile/chat-api';
 import { claimMobileGuestChat, mobileGuestAccountKey, mobileGuestToken } from '../mobile/guest-chat.native';
 import { MobileChatEngine, LocalChatState } from '../mobile/chat-engine';
 import { nativeChatPersistence } from '../mobile/chat-storage.native';
@@ -26,6 +26,8 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
   const [notice, setNotice] = useState('');
   const [greetingName, setGreetingName] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [accountVersion, setAccountVersion] = useState(0);
+  const accountRef = useRef<string | null>(null);
   const engine = useRef<MobileChatEngine | null>(null);
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
       .then((profile) => { if (active) setGreetingName(profile.greetingName); })
       .catch(() => { /* Greeting remains safely generic. */ });
     return () => { active = false; };
-  }, []);
+  }, [accountVersion]);
 
   useEffect(() => {
     let active = true;
@@ -57,6 +59,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
         engine.current = instance;
         const key = signedInKey || mobileGuestAccountKey;
         if (!active) return;
+        accountRef.current = key;
         setAccount(key);
         await instance.switchAccount(key);
         if (!active || !key) return;
@@ -65,11 +68,32 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
         await instance.retryPending();
         await instance.retryDeletes();
         await instance.pull();
-      } catch { if (active) setNotice('Chat-ийг ачаалах боломжгүй байна. Local өгөгдөл хэвээр.'); }
+      } catch (error) { if (active) setNotice(failureNotice(error)); }
       finally { if (active) setWorking(false); }
     })();
     return () => { active = false; engine.current = null; };
-  }, []);
+  }, [accountVersion]);
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    void mobileAccountKey().then((key) => {
+      const next = key || mobileGuestAccountKey;
+      if (active && accountRef.current && next !== accountRef.current) {
+        setInput(''); setState(empty); setAccount(null);
+        setAccountVersion((value) => value + 1);
+      }
+    });
+    return () => { active = false; };
+  }, []));
+
+  const failureNotice = (error: unknown) => {
+    if (error instanceof ChatApiError && (error.status === 401 || error.status === 403) ||
+      error instanceof Error && ['MOBILE_SIGN_IN_REQUIRED', 'MOBILE_TOKEN_INVALID'].includes(error.message))
+      return 'Нэвтрэлтийг Би хэсгээс шалгаад дахин оролдоно уу.';
+    if (error instanceof ChatApiError && error.code === 'REQUEST_TIMEOUT')
+      return 'Хүсэлтийн хугацаа дууслаа. Дахин оролдоно уу.';
+    return 'Сүлжээ эсвэл үйлчилгээ түр холбогдсонгүй. Дахин оролдоно уу.';
+  };
 
   const newChat = () => { setConversation(Crypto.randomUUID()); setHistoryOpen(false); setNotice(''); };
   const send = async () => {
@@ -79,15 +103,19 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
       setNotice('Үргэлжлүүлэхийн тулд Би хэсгээс нэвтэрнэ үү.');
       return;
     }
-    setInput(''); setWorking(true); setNotice('');
-    try { await engine.current?.send(conversation || Crypto.randomUUID(), text); }
-    catch { setNotice('Асуулт local-д хадгалагдсан эсэхийг шалгаад дахин оролдоно уу.'); }
-    finally { setWorking(false); }
+    const instance = engine.current;
+    if (!instance) { setNotice('Чат бэлэн болоогүй байна. Дахин оролдоно уу.'); return; }
+    setWorking(true); setNotice('');
+    try { await instance.send(conversation || Crypto.randomUUID(), text, () => {
+      if (engine.current === instance) setInput('');
+    }); }
+    catch (error) { if (engine.current === instance) setNotice(failureNotice(error)); }
+    finally { if (engine.current === instance) setWorking(false); }
   };
   const retry = async () => {
     setWorking(true); setNotice('');
     try { await engine.current?.retryPending(); await engine.current?.retryDeletes(); await engine.current?.pull(); }
-    catch { setNotice('Сүлжээ түр холбогдсонгүй. Local асуултууд хадгалагдсан.'); }
+    catch (error) { setNotice(failureNotice(error)); }
     finally { setWorking(false); }
   };
 
@@ -151,7 +179,7 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
           <View style={styles.composer}>
             <Pressable accessibilityRole="button" accessibilityLabel="Дуу оруулах (удахгүй)" disabled
               style={styles.micButton}><Text accessibilityElementsHidden style={styles.micIcon}>🎤</Text></Pressable>
-            <TextInput multiline value={input} onChangeText={setInput} accessibilityLabel={t('chat.placeholder')}
+            <TextInput editable={!working} multiline value={input} onChangeText={setInput} accessibilityLabel={t('chat.placeholder')}
               placeholder={t('chat.placeholder')} placeholderTextColor="#627D98"
               returnKeyType="default" style={styles.input} />
             <Pressable accessibilityRole="button" disabled={!input.trim() || working}

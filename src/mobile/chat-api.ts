@@ -49,15 +49,27 @@ function createAuthorizedChatApi(authorization: () => Promise<string>, transport
   apiBase: string, clientType: 'ios' | 'android') {
   if (apiBase !== PRODUCTION_CHAT_API && apiBase !== TEST_CHAT_API) throw new Error('INVALID_CHAT_API_BASE');
   async function request(path: string, method = 'GET', body?: unknown): Promise<unknown> {
-    const auth = await authorization();
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => { reject(new ChatApiError(0, 'REQUEST_TIMEOUT')); controller.abort(); }, 45000);
+    });
     let response: Response;
-    try { response = await transport(`${apiBase}${path}`, { method, redirect: 'error',
-      headers: { Accept: 'application/json', Authorization: auth,
-        'X-Enkh-Client-Type': clientType, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }) }); }
-    catch { throw new ChatApiError(0, 'NETWORK_UNAVAILABLE'); }
     let data: unknown;
-    try { data = await response.json(); } catch { throw new ChatApiError(502, 'MALFORMED_CHAT_RESPONSE'); }
+    try {
+      const auth = await Promise.race([authorization(), timeout]);
+      try { response = await Promise.race([transport(`${apiBase}${path}`, { method, redirect: 'error',
+        signal: controller.signal,
+        headers: { Accept: 'application/json', Authorization: auth,
+          'X-Enkh-Client-Type': clientType, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }) }), timeout]); }
+      catch (error) { if (error instanceof ChatApiError) throw error;
+        throw new ChatApiError(0, 'NETWORK_UNAVAILABLE'); }
+      try { data = await Promise.race([response.json(), timeout]); }
+      catch (error) { if (error instanceof ChatApiError) throw error;
+        if (!response.ok) throw new ChatApiError(response.status, 'CHAT_REQUEST_FAILED');
+        throw new ChatApiError(502, 'MALFORMED_CHAT_RESPONSE'); }
+    } finally { clearTimeout(timer!); }
     if (JSON.stringify(data).length > 1_000_000) throw new ChatApiError(502, 'MALFORMED_CHAT_RESPONSE');
     if (!response.ok) {
       const code = (data as { error?: { code?: unknown } })?.error?.code;
