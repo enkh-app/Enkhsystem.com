@@ -82,7 +82,7 @@ export default function NativeAccountScreen() {
           <Text style={styles.saveButtonText}>Нэр хадгалах</Text>
         </Pressable>
         {saved ? <Text accessibilityLiveRegion="polite" style={styles.saved}>Хадгаллаа. Нүүр хуудас дээр шинэ нэр харагдана.</Text> : null}
-        <Text style={styles.body}>Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана. Нэвтрэлт боломжтой үед автоматаар сунгагдана.</Text>
+        <Text style={styles.body}>Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана.</Text>
         <Pressable accessibilityRole="link" onPress={() => router.navigate('/chat')} style={styles.chatButton}>
           <Text style={styles.chatButtonText}>{t('nav.chat')}  →</Text>
         </Pressable>
