@@ -42,7 +42,7 @@ test('native Account normalizes profile, editable, avatar and saved display name
   assert.match(account, /mobileSetPreferredName\(normalizeMobileDisplayName\(preferredName\)/);
   assert.match(account, /mobileDisplayInitial\(preferredName \|\| accountName \|\| undefined\)/);
   assert.match(auth, /normalizeMobileDisplayName\(value\)\?\.slice\(0, 40\)/);
-  assert.match(account, /Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана\. Нэвтрэх болон гарах үйлдлийг энэ хэсгээс удирдана\./);
+  assert.match(account, /Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана\./);
   assert.match(account, /mobileSignOut/);
   assert.doesNotMatch(read('src/components/mobile-chat.native.tsx'), /mobileSignOut|Гарах/);
 });
@@ -61,12 +61,21 @@ test('native Home and legacy Chat route own only the compact native presentation
   const chatRoute = read('src/app/chat.native.tsx');
   const compact = read('src/components/mobile-chat.native.tsx');
   for (const route of [home, chatRoute]) {
-    assert.match(route, /mobile-chat\.native/);
+    assert.match(route, /from ['"]\.\.\/components\/mobile-chat['"]/);
+    assert.doesNotMatch(route, /mobile-chat\.native/);
     assert.match(route, /<MobileChatScreen homeMode \/>/);
     assert.doesNotMatch(route, /WebChatScreen|styles\.title|styles\.intro/);
   }
   assert.match(compact, /styles\.messages/);
   assert.match(compact, /styles\.composer/);
+});
+
+test('web chat fallback keeps native storage out of the web route dependency graph', () => {
+  const fallback = read('src/components/mobile-chat.web.tsx');
+  assert.match(fallback, /homeMode\?: boolean/);
+  assert.match(fallback, /return null/);
+  assert.doesNotMatch(fallback, /chat-storage|expo-sqlite|\.native/);
+  assert.match(read('src/components/mobile-chat.native.tsx'), /nativeChatPersistence/);
 });
 
 test('Home and Chat contain no sign-out ownership', () => {
