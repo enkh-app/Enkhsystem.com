@@ -31,7 +31,7 @@ export default function NativeKnowledgeScreen() {
     finally { setLoading(false); }
   };
 
-  return <SafeAreaView edges={['top']} style={styles.page}>
+  return <SafeAreaView edges={['top', 'bottom']} style={styles.page}>
     <AppHeader active="search" />
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text accessibilityRole="header" style={styles.title}>Knowledge</Text>

@@ -154,9 +154,9 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
   const conversationTitle = (id: string, index: number) =>
     state.messages.find((message) => message.clientConversationId === id && message.role === 'user')?.content.trim() || `Яриа ${index + 1}`;
 
-  return <SafeAreaView edges={['top']} style={styles.page}>
+  return <SafeAreaView edges={['top', 'bottom']} style={styles.page}>
     <AppHeader active={homeMode ? 'home' : 'chat'}
-      onBack={() => router.canGoBack() ? router.back() : router.replace('/')}
+      onBack={homeMode ? undefined : () => router.canGoBack() ? router.back() : router.replace('/')}
       onHistory={account ? () => setHistoryOpen((current) => !current) : undefined}
       onNewChat={account ? newChat : undefined} />
     <KeyboardAvoidingView style={styles.layout} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

@@ -16,7 +16,7 @@ const secondary = [
 
 export default function NativeActionsScreen() {
   const { t } = useI18n();
-  return <SafeAreaView edges={['top']} style={styles.page}>
+  return <SafeAreaView edges={['top', 'bottom']} style={styles.page}>
     <AppHeader active="tools" />
     <ScrollView contentContainerStyle={styles.content}>
       <Text accessibilityRole="header" style={styles.title}>Actions</Text>

@@ -72,7 +72,7 @@ export default function NativeAccountScreen() {
     finally { setSigningOut(false); }
   };
 
-  return <SafeAreaView edges={['top']} style={styles.page}>
+  return <SafeAreaView edges={['top', 'bottom']} style={styles.page}>
     <AppHeader active="account" />
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text accessibilityRole="header" style={styles.title}>{t('account.title')}</Text>
