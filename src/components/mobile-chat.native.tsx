@@ -92,13 +92,18 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
 
   useFocusEffect(useCallback(() => {
     let active = true;
-    void mobileAccountKey().then((key) => {
+    void mobileAccountKey().then(async (key) => {
       const next = key || mobileGuestAccountKey;
       if (active && accountRef.current && next !== accountRef.current) {
-        setInput(''); setEmojiOpen(false); setState(empty); setAccount(null);
+        setInput(''); setEmojiOpen(false); setState(empty); setAccount(null); setGreetingName(null);
         setAccountVersion((value) => value + 1);
+        return;
       }
-    });
+      if (active && accountRef.current === next) {
+        const profile = await mobileProfile();
+        if (active && accountRef.current === next) setGreetingName(profile.greetingName);
+      }
+    }).catch(() => { /* Keep the current greeting if profile loading fails. */ });
     return () => { active = false; };
   }, []));
 
@@ -167,12 +172,19 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
           </ScrollView>
         </View> : <>
           <ScrollView style={styles.messages}
-            contentContainerStyle={[styles.messageContent, visible.length === 0 && styles.emptyContent]}
+            contentContainerStyle={[styles.messageContent, visible.length === 0 && styles.emptyContent,
+              homeMode && visible.length === 0 && styles.homeEmptyContent]}
             keyboardShouldPersistTaps="handled">
-            {visible.length === 0 ? <View style={styles.emptyState}>
-              {homeMode ? <Text style={styles.hello}>{greetingName ? `Сайн байна уу, ${greetingName}.` : 'Сайн байна уу, Nasa.'}</Text> : null}
-              <Text accessibilityRole="header" style={styles.emptyTitle}>Энхтэй ярилцах</Text>
-              <Text style={styles.help}>{t('chat.empty')}</Text>
+            {visible.length === 0 ? <View style={[styles.emptyState, homeMode && styles.homeEmptyState]}>
+              {homeMode ? <>
+                <Text accessibilityRole="header" style={styles.hello}>
+                  {greetingName ? `${t('chat.homeHello')}, ${greetingName}!` : `${t('chat.homeHello')}!`}
+                </Text>
+                <Text style={styles.homePrompt}>{t('chat.homePrompt')}</Text>
+              </> : <>
+                <Text accessibilityRole="header" style={styles.emptyTitle}>Энхтэй ярилцах</Text>
+                <Text style={styles.help}>{t('chat.empty')}</Text>
+              </>}
             </View> : null}
             {visible.map((message) => <View key={message.id}
               style={[styles.messageShell, message.role === 'user' ? styles.userShell : styles.assistantShell]}>
@@ -218,9 +230,11 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
               <Pressable accessibilityRole="button" accessibilityLabel={emojiOpen ? 'Эможи хэсгийг хаах' : 'Эможи сонгох'}
                 accessibilityState={{ expanded: emojiOpen }} onPress={() => setEmojiOpen((open) => !open)}
                 style={styles.emojiToggle}><Text accessibilityElementsHidden style={styles.emojiToggleText}>🙂</Text></Pressable>
-              <TextInput editable={!working} multiline value={input} onChangeText={setInput} accessibilityLabel={t('chat.placeholder')}
+              <TextInput editable={!working} multiline value={input} onChangeText={setInput}
+                accessibilityLabel={homeMode && visible.length === 0 ? t('chat.homeInput') : t('chat.placeholder')}
                 maxLength={12000}
-                placeholder={t('chat.placeholder')} placeholderTextColor="#627D98"
+                placeholder={homeMode && visible.length === 0 ? t('chat.homeInput') : t('chat.placeholder')}
+                placeholderTextColor="#627D98"
                 returnKeyType="default" style={styles.input} />
               <Pressable accessibilityRole="button" disabled={!input.trim() || working}
                 accessibilityLabel={t('chat.send')} onPress={() => void send()}
@@ -240,8 +254,11 @@ const styles = StyleSheet.create({
   messages: { flex: 1, minHeight: 0, backgroundColor: '#FFFFFF' },
   messageContent: { paddingHorizontal: 8, paddingVertical: 9, gap: 10 },
   emptyContent: { flexGrow: 1, justifyContent: 'center' },
+  homeEmptyContent: { justifyContent: 'flex-end' },
   emptyState: { alignItems: 'center', paddingHorizontal: 28, gap: 5 },
-  hello: { color: '#829AB1', fontSize: 13, lineHeight: 18 },
+  homeEmptyState: { alignItems: 'flex-start', paddingHorizontal: 16, paddingBottom: 14, gap: 8 },
+  hello: { color: '#102A43', fontSize: 27, lineHeight: 35, fontWeight: '800' },
+  homePrompt: { color: '#627D98', fontSize: 16, lineHeight: 23 },
   emptyTitle: { color: '#486581', fontSize: 20, lineHeight: 26, fontWeight: '800', textAlign: 'center' },
   help: { color: '#829AB1', fontSize: 13, lineHeight: 18, textAlign: 'center' },
   messageShell: { maxWidth: '85%', gap: 3 },
