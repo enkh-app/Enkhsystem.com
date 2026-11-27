@@ -25,7 +25,7 @@ function loadAuth(stored, refreshed) {
     return module.exports;
   }
   return { auth: load('auth.native'), api: load('chat-api'), diagnostic: load('chat-startup-diagnostic'), parts: load('chat-image-parts'),
-    refreshes: () => refreshes, deletions: () => deletions };
+    refreshes: () => refreshes, deletions: () => deletions, setRefreshResult: value => { refreshed = value; } };
 }
 const token = (seconds, sub = 'test-user') => `e30.${Buffer.from(JSON.stringify({ iss: 'https://auth.example/', aud: 'test-api', sub, exp: Math.floor(Date.now() / 1000) + seconds })).toString('base64url')}.test`;
 test('valid signed-in token without refresh is usable inside 60-second window and ignores stale cached expiry', async () => {
@@ -56,9 +56,18 @@ test('revoked refresh clears local session; offline refresh preserves credential
 
   const offline = loadAuth({ accessToken: token(-30), refreshToken: 'fixture-refresh', expiresAt: 0 },
     new Error('network unavailable'));
-  await assert.rejects(offline.auth.mobileAccessToken(), /network unavailable/);
+  await assert.rejects(offline.auth.mobileAccessToken(), /MOBILE_REFRESH_UNAVAILABLE/);
   assert.equal(offline.deletions(), 0);
-  assert.equal((await offline.auth.mobileProfile()).signedIn, true);
+  const profile = await offline.auth.mobileProfile();
+  assert.equal(profile.signedIn, true);
+  assert.equal(profile.sessionNeedsRetry, true);
+  assert.match(offline.diagnostic.chatStartupDiagnostic('pull', new Error('MOBILE_REFRESH_UNAVAILABLE')),
+    /code=MOBILE_REFRESH_UNAVAILABLE status=none/);
+  const fresh = token(3600);
+  offline.setRefreshResult({ accessToken: fresh, issuedAt: Date.now() / 1000, expiresIn: 3600 });
+  assert.equal(await offline.auth.mobileAccessToken(), fresh);
+  assert.equal((await offline.auth.mobileProfile()).sessionNeedsRetry, false);
+  assert.equal(offline.deletions(), 0);
 });
 test('expired token refresh succeeds; refresh cannot switch account identity', async () => {
   const fresh = token(3600);

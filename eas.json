@@ -17,6 +17,15 @@
                   "production":  {
                                      "autoIncrement":  true,
                                      "channel":  "production"
+                                 },
+                  "recovery-testflight":  {
+                                               "distribution":  "store",
+                                               "environment":  "production",
+                                               "autoIncrement":  true,
+                                               "channel":  "recovery-testflight",
+                                               "ios":  {
+                                                            "image":  "latest"
+                                                        }
                                  }
               },
     "submit":  {

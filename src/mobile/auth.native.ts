@@ -12,7 +12,8 @@ const TOKEN_KEY = 'enkh.mobile.auth.v1';
 const PREFERRED_NAME_KEY = 'enkh.mobile.preferred-name.v1';
 const MOBILE_AUTH_SCOPES = ['openid', 'profile', 'offline_access', 'use:chat', 'read:admin-data'];
 type StoredTokens = { accessToken: string; refreshToken?: string; expiresAt: number; displayName?: string };
-export type MobileProfile = { signedIn: boolean; displayName: string | null; preferredName: string | null; greetingName: string | null };
+export type MobileProfile = { signedIn: boolean; displayName: string | null; preferredName: string | null;
+  greetingName: string | null; sessionNeedsRetry: boolean };
 let pendingRefresh: Promise<string> | null = null;
 const authGeneration = new AuthGenerationGuard();
 
@@ -126,15 +127,18 @@ export async function mobileAccessToken(): Promise<string> {
   if (!pendingRefresh) pendingRefresh = (async () => {
     const generation = authGeneration.capture();
     const settings = config();
-    const discovery = await AuthSession.fetchDiscoveryAsync(settings.issuer);
     let fresh;
-    try { fresh = await AuthSession.refreshAsync({ clientId: settings.clientId, refreshToken: stored.refreshToken! }, discovery); }
+    try {
+      const discovery = await AuthSession.fetchDiscoveryAsync(settings.issuer);
+      fresh = await AuthSession.refreshAsync({ clientId: settings.clientId, refreshToken: stored.refreshToken! }, discovery);
+    }
     catch (error) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'invalid_grant') {
         await clearRejectedRefresh(stored, generation);
         throw new Error('MOBILE_REAUTH_REQUIRED');
       }
-      throw error;
+      // A failed discovery or transient provider request must never erase the saved session.
+      throw new Error('MOBILE_REFRESH_UNAVAILABLE');
     }
     if (checkToken(fresh.accessToken) !== checkToken(stored.accessToken, false)) {
       await clearRejectedRefresh(stored, generation);
@@ -166,22 +170,24 @@ export async function mobileProfile(): Promise<MobileProfile> {
   const preferredName = (await SecureStore.getItemAsync(PREFERRED_NAME_KEY))?.trim() || null;
   try {
     const stored = await readTokens();
-    if (!stored) return { signedIn: false, displayName: null, preferredName, greetingName: preferredName };
+    if (!stored) return { signedIn: false, displayName: null, preferredName, greetingName: preferredName, sessionNeedsRetry: false };
     checkToken(stored.accessToken, false);
+    let sessionNeedsRetry = false;
     const expiry = decodeMobileJwtClaims(stored.accessToken).exp;
     if (typeof expiry !== 'number' || expiry <= Date.now() / 1000) {
-      if (!stored.refreshToken) return { signedIn: false, displayName: null, preferredName, greetingName: preferredName };
+      if (!stored.refreshToken) return { signedIn: false, displayName: null, preferredName, greetingName: preferredName, sessionNeedsRetry: false };
       try { await mobileAccessToken(); }
       catch (error) {
         if (error instanceof Error && error.message === 'MOBILE_REAUTH_REQUIRED')
-          return { signedIn: false, displayName: null, preferredName, greetingName: preferredName };
+          return { signedIn: false, displayName: null, preferredName, greetingName: preferredName, sessionNeedsRetry: false };
+        sessionNeedsRetry = true;
       }
     }
     const displayName = normalizeMobileDisplayName(stored.displayName);
     return { signedIn: true, displayName, preferredName,
-      greetingName: preferredName || displayName };
+      greetingName: preferredName || displayName, sessionNeedsRetry };
   } catch {
-    return { signedIn: false, displayName: null, preferredName, greetingName: preferredName };
+    return { signedIn: false, displayName: null, preferredName, greetingName: preferredName, sessionNeedsRetry: false };
   }
 }
 
