@@ -159,12 +159,6 @@ export default function NativeChatScreen({ homeMode = false }: NativeChatScreenP
       onBack={homeMode ? undefined : () => router.canGoBack() ? router.back() : router.replace('/')}
       onHistory={account ? () => setHistoryOpen((current) => !current) : undefined}
       onNewChat={account ? newChat : undefined} />
-    {homeMode && visible.length > 0 && !historyOpen ? <View style={styles.activeHomeGreeting}>
-      <Text accessibilityRole="header" style={styles.activeHomeHello}>
-        {greetingName ? `${t('chat.homeHello')}, ${greetingName}!` : `${t('chat.homeHello')}!`}
-      </Text>
-      <Text style={styles.homePrompt}>{t('chat.homePrompt')}</Text>
-    </View> : null}
     <KeyboardAvoidingView style={styles.layout} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {historyOpen && account ? <View style={styles.historyPanel}>
           <Text accessibilityRole="header" style={styles.historyTitle}>Ярианы түүх</Text>
@@ -263,8 +257,6 @@ const styles = StyleSheet.create({
   homeEmptyContent: { justifyContent: 'flex-end' },
   emptyState: { alignItems: 'center', paddingHorizontal: 28, gap: 5 },
   homeEmptyState: { alignItems: 'flex-start', paddingHorizontal: 16, paddingBottom: 14, gap: 8 },
-  activeHomeGreeting: { paddingHorizontal: 22, paddingVertical: 10, gap: 2, borderBottomWidth: 1, borderBottomColor: '#DFE8F3' },
-  activeHomeHello: { color: '#102A43', fontSize: 20, lineHeight: 27, fontWeight: '800' },
   hello: { color: '#102A43', fontSize: 27, lineHeight: 35, fontWeight: '800' },
   homePrompt: { color: '#627D98', fontSize: 16, lineHeight: 23 },
   emptyTitle: { color: '#486581', fontSize: 20, lineHeight: 26, fontWeight: '800', textAlign: 'center' },
