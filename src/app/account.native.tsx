@@ -22,12 +22,14 @@ export default function NativeAccountScreen() {
   const [notice, setNotice] = useState('');
   const [showAdmin, setShowAdmin] = useState(false);
   const [accountActionsOpen, setAccountActionsOpen] = useState(false);
+  const [sessionNeedsRetry, setSessionNeedsRetry] = useState(false);
 
   useFocusEffect(useCallback(() => {
     let active = true;
     void Promise.all([mobileAccountKey(), mobileProfile()]).then(([accountKey, profile]) => {
       if (!active) return;
       setSignedIn(!!accountKey);
+      setSessionNeedsRetry(!!accountKey && profile.sessionNeedsRetry);
       setAccountName(normalizeMobileDisplayName(profile.displayName || undefined));
       setPreferredName(normalizeMobileDisplayName(profile.preferredName || undefined) || '');
       if (!accountKey) { setShowAdmin(false); setAccountActionsOpen(false); return; }
@@ -49,6 +51,7 @@ export default function NativeAccountScreen() {
       const accountKey = await mobileSignIn();
       const profile = await mobileProfile();
       setSignedIn(!!accountKey);
+      setSessionNeedsRetry(profile.sessionNeedsRetry);
       setAccountName(normalizeMobileDisplayName(profile.displayName || undefined));
       setPreferredName(normalizeMobileDisplayName(profile.preferredName || undefined) || '');
       setShowAdmin(await mobileAdminAccessAllowed(adminApi));
@@ -61,7 +64,7 @@ export default function NativeAccountScreen() {
   const signOut = async () => {
     setSigningOut(true); setNotice('');
     try {
-      const result = await mobileSignOut(() => { setSignedIn(false); setAccountName(null); setShowAdmin(false); setAccountActionsOpen(false); });
+      const result = await mobileSignOut(() => { setSignedIn(false); setSessionNeedsRetry(false); setAccountName(null); setShowAdmin(false); setAccountActionsOpen(false); });
       if (!result.browserLoggedOut || !result.revoked)
         setNotice('Энэ төхөөрөмжөөс гарлаа. Auth0-ийн browser session эсвэл token хүчингүй болгох үйлдэл баталгаажаагүй тул бусдын төхөөрөмж дээр дахин нэвтрэхээс өмнө browser-оосоо мөн гарна уу.');
     }
@@ -87,10 +90,13 @@ export default function NativeAccountScreen() {
         </Pressable>
         {saved ? <Text accessibilityLiveRegion="polite" style={styles.saved}>Хадгаллаа. Нүүр хуудас дээр шинэ нэр харагдана.</Text> : null}
         <Text style={styles.body}>Хоосон хадгалбал бүртгэлтэй нэрийг ашиглана. Нэвтрэлт боломжтой үед автоматаар сунгагдана.</Text>
+        {sessionNeedsRetry ? <Text accessibilityLiveRegion="polite" style={styles.notice}>
+          Сессийг түр шалгаж чадсангүй. Холболтоо шалгаад Чат дээр «Дахин» дарна уу. Гарах шаардлагагүй.
+        </Text> : null}
         <Pressable accessibilityRole="link" onPress={() => router.navigate('/chat')} style={styles.chatButton}>
           <Text style={styles.chatButtonText}>{t('nav.chat')}  →</Text>
         </Pressable>
-        <Pressable accessibilityRole="link" onPress={() => router.navigate('/chat')} style={styles.chatButton}>
+        <Pressable accessibilityRole="link" onPress={() => router.navigate('/people-chat')} style={styles.chatButton}>
           <Text style={styles.chatButtonText}>Хүмүүсийн чат →</Text>
         </Pressable>
         {!signedIn ? <Pressable accessibilityRole="button" disabled={signingIn}
