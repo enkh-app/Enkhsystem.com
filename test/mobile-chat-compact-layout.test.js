@@ -10,7 +10,7 @@ const header = read('src/components/app-header.native.tsx');
 const shell = read('src/components/app-shell.native.tsx');
 
 test('native Chat uses one compact action header without body auth or numbered conversation controls', () => {
-  assert.match(chat, /onBack=\{\(\) => router\.canGoBack\(\)/);
+  assert.match(chat, /onBack=\{homeMode \? undefined : \(\) => router\.canGoBack\(\)/);
   assert.match(chat, /onHistory=\{account \?/);
   assert.match(chat, /onNewChat=\{account \?/);
   assert.match(header, /accessibilityLabel="Буцах"/);
@@ -25,6 +25,7 @@ test('native Chat uses one compact action header without body auth or numbered c
 
 test('message viewport and compact composer preserve keyboard and safe-area layout contracts', () => {
   assert.match(chat, /KeyboardAvoidingView[\s\S]*behavior=\{Platform\.OS === 'ios' \? 'padding'/);
+  assert.match(chat, /<SafeAreaView edges=\{\['top', 'bottom'\]\}/);
   assert.match(chat, /layout: \{ flex: 1, minHeight: 0/);
   assert.match(chat, /messages: \{ flex: 1, minHeight: 0/);
   assert.match(chat, /composer: \{ flexShrink: 0/);
@@ -36,8 +37,7 @@ test('message viewport and compact composer preserve keyboard and safe-area layo
   assert.match(chat, /sendButton: \{ width: 48, height: 48/);
   assert.match(chat, /accessibilityLabel=\{t\('chat\.send'\)\}/);
   assert.match(chat, /placeholderTextColor="#627D98"/);
-  assert.match(shell, /keyboardDidShow/);
-  assert.match(shell, /!keyboardVisible && <NativeBottomNavigation/);
+  assert.doesNotMatch(shell, /NativeBottomNavigation/);
 });
 
 test('pending, retry, error and history remain compact and data-backed', () => {

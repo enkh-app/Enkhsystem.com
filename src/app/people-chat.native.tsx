@@ -8,6 +8,7 @@ import { mobileAccessToken, mobileAccountKey } from '../mobile/auth.native';
 import { resolveMobileChatApiBase } from '../mobile/chat-api';
 import { createPeopleChatApi, PeopleContact, PeopleMessage, PeopleThread } from '../mobile/people-chat-api';
 import { QuickEmojiPicker } from '../components/quick-emoji-picker.native';
+import { AppHeader } from '../components/app-header.native';
 import { appendQuickEmoji } from '../mobile/emoji-composer';
 
 export default function PeopleChatScreen() {
@@ -56,8 +57,8 @@ export default function PeopleChatScreen() {
     finally { setBusy(false); }
   };
   return <SafeAreaView style={styles.page}>
-    <View style={styles.top}><Pressable accessibilityRole="button" onPress={() => router.back()}>
-      <Text style={styles.link}>‹ Буцах</Text></Pressable><Text style={styles.title}>Хүмүүсийн чат</Text></View>
+    <AppHeader active="chat" onBack={() => router.canGoBack() ? router.back() : router.replace('/')} />
+    <View style={styles.top}><Text style={styles.title}>Хүмүүсийн чат</Text></View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.help}>Өөрийн ID-г танилдаа дамжуулаад, түүний ID-г оруулж жагсаалтдаа нэмнэ. Нэмэхэд нөгөө хүний жагсаалт автоматаар өөрчлөгдөхгүй.</Text>
       {self ? <Text selectable style={styles.id}>Миний ID: {self}</Text> : null}

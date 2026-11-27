@@ -12,7 +12,7 @@ export default function NativeAdminScreen() {
   const load = useCallback(async () => { setError(''); try { setData(await api.overview()); }
     catch (e) { setData(undefined); setError(e instanceof MobileAdminApiError && e.status === 403 ? 'Админ эрх шаардлагатай.' : 'Мэдээлэл ачаалсангүй.'); } }, []);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
-  return <SafeAreaView edges={['top']} style={s.page}><AppHeader active="admin"/><ScrollView contentContainerStyle={s.content}>
+  return <SafeAreaView edges={['top', 'bottom']} style={s.page}><AppHeader active="admin"/><ScrollView contentContainerStyle={s.content}>
     <Text accessibilityRole="header" style={s.title}>Админ</Text><Text style={s.subtitle}>Зөвхөн унших системийн төлөв.</Text>
     {!data && !error ? <ActivityIndicator style={s.loading}/> : null}{error ? <Text style={s.error}>{error}</Text> : null}
     {data ? <><View style={s.grid}><Metric label="Database" value={data.database.status}/><Metric label="Workspace accounts" value={data.accounts.withWorkspace}/>

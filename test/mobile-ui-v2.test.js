@@ -12,7 +12,7 @@ const moduleResult = { exports: {} };
 new Function('exports', 'module', code)(moduleResult.exports, moduleResult);
 const { nativePrimaryRoutes, nativePrimaryRoute } = moduleResult.exports;
 
-test('native bottom navigation separates AI Home and people Chat', () => {
+test('native menu separates AI Home and people Chat', () => {
   assert.deepEqual(nativePrimaryRoutes.map((item) => [item.label, item.href]), [
     ['Нүүр', '/'], ['Чат', '/chat'], ['Үйлдэл', '/actions'], ['Мэдлэг', '/knowledge'], ['Би', '/account'],
   ]);
@@ -25,12 +25,14 @@ test('native bottom navigation separates AI Home and people Chat', () => {
   assert.equal(nativePrimaryRoute('/workspace'), '/account');
 });
 
-test('native shell owns safe-area bottom tabs while web shell leaves markup untouched', () => {
+test('native shell gives the Home screen full height while web shell remains unchanged', () => {
   const shell = read('src/components/app-shell.native.tsx');
-  assert.match(shell, /NativeBottomNavigation/);
-  assert.match(shell, /keyboardDidShow/);
-  assert.match(shell, /keyboardDidHide/);
-  assert.match(read('src/components/native-bottom-navigation.native.tsx'), /edges=\{\['bottom'\]\}/);
+  assert.doesNotMatch(shell, /NativeBottomNavigation/);
+  const header = read('src/components/app-header.native.tsx');
+  assert.match(header, /accessibilityLabel="Үндсэн цэс"/);
+  assert.match(header, /nativePrimaryRoutes\.map/);
+  assert.match(header, /onRequestClose=\{\(\) => setMenuOpen\(false\)\}/);
+  assert.match(read('src/app/people-chat.native.tsx'), /<AppHeader active="chat" onBack=/);
   assert.match(read('src/components/app-shell.web.tsx'), /return <>\{children\}<\/>/);
   assert.match(read('src/app/_layout.tsx'), /<AppShell>[\s\S]*<Stack/);
 });
